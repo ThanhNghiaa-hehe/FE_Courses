@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Tailwind v4 theme tokens */
+@theme {
+  --color-primary: #007fff;
+  --color-background-dark: #0f1923;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+/* Base page styles */
+body {
+  background-color: var(--color-background-dark);
+  color: white;
+  font-family: var(--font-display);
+}
