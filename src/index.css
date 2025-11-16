@@ -1,15 +1,29 @@
 @import "tailwindcss";
 
-/* Tailwind v4 theme tokens */
-@theme {
-  --color-primary: #007fff;
-  --color-background-dark: #0f1923;
-  --font-display: "Space Grotesk", sans-serif;
-}
-
 /* Base page styles */
 body {
-  background-color: var(--color-background-dark);
+  background-color: #0f1923;
   color: white;
-  font-family: var(--font-display);
+  font-family: "Space Grotesk", sans-serif;
+}
+
+/* Form input styles */
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 0.5rem;
+  color: white;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  border-color: #007fff;
+  box-shadow: 0 0 0 3px rgba(0, 127, 255, 0.1);
+}
+
+.form-input::placeholder {
+  color: #666;
 }
