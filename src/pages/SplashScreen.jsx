@@ -1,6 +1,9 @@
 import React from "react";
 
-export default function SplashScreen({ onOpen }) {
+import { useNavigate } from "react-router-dom";
+
+export default function SplashScreen() {
+  const navigate = useNavigate();
   return (
     <div className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-background-dark text-white font-display">
       {/* Dynamic Background Container */}
@@ -37,7 +40,7 @@ export default function SplashScreen({ onOpen }) {
         <div className="absolute bottom-16 md:bottom-24">
           {/* SingleButton component */}
           <div className="flex px-4 py-3 justify-center">
-            <button onClick={onOpen} className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-8 bg-primary text-white text-lg font-bold leading-normal tracking-[0.015em] transition-transform duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-4 focus:ring-primary/50">
+            <button onClick={() => navigate("/auth")} className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-8 bg-primary text-white text-lg font-bold leading-normal tracking-[0.015em] transition-transform duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-4 focus:ring-primary/50">
               <span className="truncate">Get started</span>
             </button>
           </div>

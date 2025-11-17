@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import { signInWithGoogle } from "../config/firebaseConfig.jsx";
 import AuthAPI from "../api/authApi.jsx";
  // Firebase config và signInWithGoogle
 
 export default function AuthModal() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("register");
 
   // Register state
@@ -107,15 +110,43 @@ export default function AuthModal() {
       password: loginPassword,
     });
 
+    console.log("🔍 LOGIN RESPONSE:", res.data);
+
     const accessToken = res.data?.data?.accessToken;
 
     if (res.data.success && accessToken) {
+      // Decode JWT token để lấy role
+      const decoded = jwtDecode(accessToken);
+      console.log("🔓 Decoded Token:", decoded);
+      
+      const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+      console.log("👤 User Role:", userRole);
+      console.log("🔍 Checking role:", userRole, "=== 'ADMIN'?", userRole === "ADMIN");
+      console.log("🔍 Checking role:", userRole, "=== 'ROLE_ADMIN'?", userRole === "ROLE_ADMIN");
+
       localStorage.setItem("accessToken", accessToken);
-      alert("Login OK!");
+      localStorage.setItem("userEmail", loginEmail);
+      if (userRole) {
+        localStorage.setItem("userRole", userRole);
+      }
+      
+      console.log("✅ Role saved to localStorage:", localStorage.getItem("userRole"));
+      
+      // Tự động redirect dựa vào role
+      if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
+        console.log("🔴 Redirecting to ADMIN dashboard");
+        alert("Redirecting to Admin Dashboard!");
+        navigate("/admin/dashboard");
+      } else {
+        console.log("🟢 Redirecting to USER home");
+        alert("Redirecting to User Home!");
+        navigate("/home");
+      }
     } else {
       alert(res.data.message || "Login failed");
     }
   } catch (e) {
+    console.error("❌ Login error:", e);
     alert(e.response?.data?.message || "Login error");
   } finally {
     setLoginLoading(false);
@@ -134,8 +165,22 @@ export default function AuthModal() {
 
     if (res.data.success) {
       const token = res.data.data?.accessToken;
+      
+      // Decode JWT token để lấy role
+      const decoded = jwtDecode(token);
+      const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+      
       localStorage.setItem("accessToken", token);
-      alert("Google Login thành công");
+      if (userRole) {
+        localStorage.setItem("userRole", userRole);
+      }
+      
+      // Tự động redirect dựa vào role
+      if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/home");
+      }
     } else {
       alert(res.data.message || "Google login failed");
     }

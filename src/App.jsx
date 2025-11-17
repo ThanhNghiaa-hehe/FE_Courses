@@ -1,33 +1,33 @@
-import React, { useState } from "react";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import SplashScreen from "./pages/SplashScreen.jsx";
+import Home from "./pages/Home.jsx";
+import MyCourses from "./pages/MyCourses.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import AdminCourses from "./pages/Admin.jsx";
+import AdminCategories from "./pages/AdminCategories.jsx";
 import AuthModal from "./component/AuthModal.jsx";
 
 function App() {
-  const [showAuthModal, setShowAuthModal] = useState(false);
   return (
-    <>
-      <SplashScreen onOpen={() => setShowAuthModal(true)} />
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAuthModal(false)}
-          />
-          {/* Modal wrapper ensures click inside doesn't close */}
-          <div className="relative z-10 w-full max-w-md">
-            <AuthModal />
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="absolute -right-2 -top-2 rounded-full bg-[#1C1C1E] p-2 text-gray-400 hover:text-white shadow-lg"
-              aria-label="Close"
-            >
-              <span className="material-symbols-outlined text-xl">close</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<SplashScreen />} />
+        <Route path="/auth" element={<AuthModal />} />
+        
+        {/* User Routes */}
+        <Route path="/home" element={<Home />} />
+        <Route path="/courses" element={<MyCourses />} />
+        
+        {/* Admin Routes - Protected */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/courses" element={<AdminCourses />} />
+        <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
