@@ -23,15 +23,25 @@ export default function AuthModal() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // Forgot Password state
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordToken, setForgotPasswordToken] = useState("");
+  const [forgotPasswordOtp, setForgotPasswordOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [forgotPasswordStep, setForgotPasswordStep] = useState("email"); // email, verify-otp, reset-password
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
   // UI toggles
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Loading states
   const [registerLoading, setRegisterLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   const apiBase = "http://localhost:8080/api/auth";
 
@@ -191,6 +201,77 @@ export default function AuthModal() {
   }
 };
 
+  // Forgot Password - Step 1: Send OTP to email
+  const sendForgotPasswordOtp = async () => {
+    try {
+      setForgotPasswordLoading(true);
+      const res = await AuthAPI.forgotPassword(forgotPasswordEmail);
+
+      if (res.data.success) {
+        setForgotPasswordToken(res.data.data?.token);
+        setForgotPasswordStep("verify-otp");
+        alert("OTP đã được gửi đến email của bạn!");
+      } else {
+        alert(res.data.message || "Gửi OTP thất bại");
+      }
+    } catch (e) {
+      alert(e.response?.data?.message || "Email không tồn tại");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  // Forgot Password - Step 2: Verify OTP
+  const verifyForgotPasswordOtp = async () => {
+    try {
+      setForgotPasswordLoading(true);
+      const res = await AuthAPI.verifyOtpPassword({
+        token: forgotPasswordToken,
+        otp: forgotPasswordOtp,
+      });
+
+      if (res.data.success) {
+        setForgotPasswordStep("reset-password");
+        alert("Xác thực OTP thành công!");
+      } else {
+        alert(res.data.message || "OTP không đúng");
+      }
+    } catch (e) {
+      alert(e.response?.data?.message || "Xác thực OTP thất bại");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  // Forgot Password - Step 3: Reset Password
+  const resetPassword = async () => {
+    try {
+      setForgotPasswordLoading(true);
+      const res = await AuthAPI.resetPassword({
+        email: forgotPasswordEmail,
+        token: forgotPasswordToken,
+        newPassword: newPassword,
+      });
+
+      if (res.data.success) {
+        alert("Đặt lại mật khẩu thành công!");
+        // Reset states
+        setShowForgotPassword(false);
+        setForgotPasswordStep("email");
+        setForgotPasswordEmail("");
+        setForgotPasswordOtp("");
+        setNewPassword("");
+        setActiveTab("login");
+      } else {
+        alert(res.data.message || "Đặt lại mật khẩu thất bại");
+      }
+    } catch (e) {
+      alert(e.response?.data?.message || "Đặt lại mật khẩu thất bại");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
 
   const Spinner = () => (
     <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -271,18 +352,122 @@ export default function AuthModal() {
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="form-input"
               />
-              <button onClick={() => setShowLoginPassword((s) => !s)}>
+              <button onClick={() => setShowLoginPassword((s) => !s)} className="text-sm text-gray-400">
                 {showLoginPassword ? "Hide Password" : "Show Password"}
               </button>
-              <button onClick={login} disabled={loginLoading}>
+              
+              {/* Forgot Password Link */}
+              <button 
+                onClick={() => setShowForgotPassword(true)} 
+                className="text-sm text-primary hover:underline text-right"
+              >
+                Quên mật khẩu?
+              </button>
+
+              <button onClick={login} disabled={loginLoading || !loginEmail || !loginPassword} className="bg-primary text-white py-2 rounded disabled:opacity-50">
                 {loginLoading ? <Spinner /> : "Login"}
               </button>
-              <button onClick={googleSignIn} disabled={googleLoading}>
+              
+              <div className="my-2 text-center text-gray-500">OR</div>
+              
+              <button onClick={googleSignIn} disabled={googleLoading} className="border border-gray-600 text-white py-2 rounded">
                 {googleLoading ? <Spinner /> : "Continue with Google"}
               </button>
             </div>
           )}
         </div>
+
+        {/* Forgot Password Modal */}
+        {showForgotPassword && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="w-full max-w-md rounded-lg bg-[#0A0A0A] p-8 shadow-2xl border border-gray-800">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Quên mật khẩu</h2>
+                <button 
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setForgotPasswordStep("email");
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {forgotPasswordStep === "email" && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-gray-400 text-sm">Nhập email của bạn để nhận mã OTP</p>
+                  <input 
+                    placeholder="Email" 
+                    type="email"
+                    value={forgotPasswordEmail} 
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)} 
+                    className="form-input bg-gray-900 border border-gray-700 text-white px-4 py-2 rounded focus:border-primary"
+                  />
+                  <button 
+                    onClick={sendForgotPasswordOtp} 
+                    disabled={forgotPasswordLoading || !forgotPasswordEmail}
+                    className="bg-primary text-white py-2 rounded disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {forgotPasswordLoading ? <Spinner /> : "Gửi OTP"}
+                  </button>
+                </div>
+              )}
+
+              {forgotPasswordStep === "verify-otp" && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-gray-400 text-sm">Nhập mã OTP đã được gửi đến: <span className="text-white">{forgotPasswordEmail}</span></p>
+                  <input 
+                    placeholder="Mã OTP (6 chữ số)" 
+                    value={forgotPasswordOtp} 
+                    onChange={(e) => setForgotPasswordOtp(e.target.value)} 
+                    className="form-input bg-gray-900 border border-gray-700 text-white px-4 py-2 rounded focus:border-primary"
+                    maxLength="6"
+                  />
+                  <button 
+                    onClick={verifyForgotPasswordOtp} 
+                    disabled={forgotPasswordLoading || !forgotPasswordOtp}
+                    className="bg-primary text-white py-2 rounded disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {forgotPasswordLoading ? <Spinner /> : "Xác thực OTP"}
+                  </button>
+                  <button 
+                    onClick={() => setForgotPasswordStep("email")}
+                    className="text-sm text-gray-400 hover:text-white"
+                  >
+                    ← Quay lại
+                  </button>
+                </div>
+              )}
+
+              {forgotPasswordStep === "reset-password" && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-gray-400 text-sm">Nhập mật khẩu mới của bạn</p>
+                  <input 
+                    placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" 
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)} 
+                    className="form-input bg-gray-900 border border-gray-700 text-white px-4 py-2 rounded focus:border-primary"
+                  />
+                  <button 
+                    onClick={() => setShowNewPassword(!showNewPassword)} 
+                    className="text-sm text-gray-400 hover:text-white text-left"
+                  >
+                    {showNewPassword ? "🙈 Ẩn mật khẩu" : "👁️ Hiện mật khẩu"}
+                  </button>
+                  <button 
+                    onClick={resetPassword} 
+                    disabled={forgotPasswordLoading || !newPassword || newPassword.length < 6}
+                    className="bg-primary text-white py-2 rounded disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {forgotPasswordLoading ? <Spinner /> : "Đặt lại mật khẩu"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

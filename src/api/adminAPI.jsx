@@ -74,6 +74,33 @@ const AdminAPI = {
   deleteCourse: (id) => {
     return axiosInstance.delete(`/admin/courses/delete/${id}`);
   },
+
+  // ==================== USERS ====================
+
+  /**
+   * 👥 Lấy tất cả users (Admin only)
+   */
+  getAllUsers: () => {
+    return axiosInstance.get("/admin/users/read-users");
+  },
+
+  /**
+   * 🔄 Toggle user active status (Enable/Disable)
+   * @param {string} id - User ID
+   * @param {boolean} isActive - New active status
+   */
+  updateUserActive: (id, isActive) => {
+    return axiosInstance.put(`/admin/users/active/${id}`, { isActive });
+  },
+
+  /**
+   * 👑 Cập nhật role của user
+   * @param {string} id - User ID
+   * @param {Object} data - { role: "USER" | "ADMIN" }
+   */
+  updateUserRole: (id, data) => {
+    return axiosInstance.put(`/admin/users/${id}/role`, data);
+  },
 };
 
 export default AdminAPI;
