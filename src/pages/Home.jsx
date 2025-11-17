@@ -82,6 +82,13 @@ export default function Home() {
               <button className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white">
                 <span className="material-symbols-outlined">search</span>
               </button>
+              <button 
+                onClick={() => navigate("/profile")}
+                className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
+                title="Thông tin cá nhân"
+              >
+                <span className="material-symbols-outlined">account_circle</span>
+              </button>
             </div>
           </div>
         </header>
