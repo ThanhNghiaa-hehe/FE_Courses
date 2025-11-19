@@ -9,13 +9,13 @@ export default function Sidebar({ onLogout }) {
   const menuItems = [
     { icon: "home", label: "Dashboard", path: "/home" },
     { icon: "school", label: "My Courses", path: "/courses" },
+    { icon: "favorite", label: "Favorites", path: "/favorites" },
+    { icon: "shopping_cart", label: "Cart", path: "/cart" },
     { icon: "explore", label: "Explore", path: "/explore" },
-    { icon: "assignment", label: "Assignments", path: "/assignments" },
-    { icon: "emoji_events", label: "Achievements", path: "/achievements" },
-    { icon: "people", label: "Community", path: "/community" },
   ];
 
   const settingsItems = [
+    { icon: "account_circle", label: "Profile", path: "/profile" },
     { icon: "settings", label: "Settings", path: "/settings" },
     { icon: "help", label: "Help & Support", path: "/help" },
   ];

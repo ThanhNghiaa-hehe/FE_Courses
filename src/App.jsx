@@ -4,6 +4,8 @@ import SplashScreen from "./pages/SplashScreen.jsx";
 import Home from "./pages/Home.jsx";
 import MyCourses from "./pages/MyCourses.jsx";
 import UserProfile from "./pages/UserProfile.jsx";
+import Favorites from "./pages/Favorites.jsx";
+import Cart from "./pages/Cart.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminCourses from "./pages/Admin.jsx";
 import AdminCategories from "./pages/AdminCategories.jsx";
@@ -21,6 +23,8 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/courses" element={<MyCourses />} />
         <Route path="/profile" element={<UserProfile />} />
+        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/cart" element={<Cart />} />
         
         {/* Admin Routes - Protected */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
