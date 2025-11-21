@@ -8,10 +8,10 @@ export default function Sidebar({ onLogout }) {
 
   const menuItems = [
     { icon: "home", label: "Dashboard", path: "/home" },
+    { icon: "explore", label: "Explore", path: "/explore" },
+    { icon: "shopping_cart", label: "Cart", path: "/cart" },
     { icon: "school", label: "My Courses", path: "/courses" },
     { icon: "favorite", label: "Favorites", path: "/favorites" },
-    { icon: "shopping_cart", label: "Cart", path: "/cart" },
-    { icon: "explore", label: "Explore", path: "/explore" },
   ];
 
   const settingsItems = [

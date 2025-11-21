@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://localhost:8080/api';
+const STATIC_BASE_URL = 'http://localhost:8080'; // Thay đổi để support cả /static và /uploads
 
 export const API_ENDPOINTS = {
   LOGIN: `${API_BASE_URL}/auth/login`,
@@ -9,6 +10,29 @@ export const API_ENDPOINTS = {
   FORGET_PASSWORD: `${API_BASE_URL}/auth/forget-password`,
   VERIFY_OTP_PASSWORD: `${API_BASE_URL}/auth/verify-otpPassword`,
   RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
+};
+
+/**
+ * Helper function to build image URL
+ * @param {string} imagePath - Can be filename (e.g., "spring-boot.jpg") or full URL
+ * @returns {string} Full image URL
+ */
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // Nếu đã là full URL (http:// hoặc https://)
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Nếu bắt đầu bằng /static/, /uploads/, /images/
+  if (imagePath.startsWith('/')) {
+    return `${STATIC_BASE_URL}${imagePath}`;
+  }
+  
+  // Nếu chỉ là tên file, thử cả /uploads/products/ VÀ /static/products/
+  // Backend có thể serve ở 1 trong 2 path này
+  return `${STATIC_BASE_URL}/uploads/products/${imagePath}`;
 };
 
 export default API_BASE_URL;
