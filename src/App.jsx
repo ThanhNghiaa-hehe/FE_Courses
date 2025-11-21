@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import SplashScreen from "./pages/SplashScreen.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import Home from "./pages/Home.jsx";
 import MyCourses from "./pages/MyCourses.jsx";
 import UserProfile from "./pages/UserProfile.jsx";
@@ -16,10 +16,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<SplashScreen />} />
+        {/* Public Route - Landing Page */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthModal />} />
         
-        {/* User Routes */}
+        {/* User Routes - Requires Login */}
         <Route path="/home" element={<Home />} />
         <Route path="/courses" element={<MyCourses />} />
         <Route path="/profile" element={<UserProfile />} />

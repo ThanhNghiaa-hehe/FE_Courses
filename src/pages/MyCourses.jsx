@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
+import { getImageUrl } from "../config/apiConfig.jsx";
 
 export default function MyCourses() {
   const navigate = useNavigate();
@@ -174,7 +175,7 @@ export default function MyCourses() {
                   <div className="relative aspect-video overflow-hidden bg-gray-800">
                     {course.thumbnailUrl ? (
                       <img
-                        src={course.thumbnailUrl}
+                        src={getImageUrl(course.thumbnailUrl)}
                         alt={course.title}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                         onError={(e) => {

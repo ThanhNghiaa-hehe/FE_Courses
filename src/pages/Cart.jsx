@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CartAPI from "../api/cartAPI";
 import {jwtDecode} from "jwt-decode";
+import { getImageUrl } from "../config/apiConfig.jsx";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -129,7 +130,7 @@ export default function Cart() {
                   <div className="flex gap-4">
                     {/* Course Image */}
                     <img
-                      src={item.thumbnailUrl || "/assets/default-course.jpg"}
+                      src={getImageUrl(item.thumbnailUrl) || "/assets/default-course.jpg"}
                       alt={item.title}
                       className="w-32 h-24 object-cover rounded-lg"
                     />

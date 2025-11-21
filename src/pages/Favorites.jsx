@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import FavoriteAPI from "../api/favoriteAPI";
 import CartAPI from "../api/cartAPI";
 import {jwtDecode} from "jwt-decode";
+import { getImageUrl } from "../config/apiConfig.jsx";
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -166,7 +167,7 @@ export default function Favorites() {
                 {/* Course Image */}
                 <div className="relative overflow-hidden h-48">
                   <img
-                    src={course.thumbnailUrl || "/assets/default-course.jpg"}
+                    src={getImageUrl(course.thumbnailUrl) || "/assets/default-course.jpg"}
                     alt={course.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                   />

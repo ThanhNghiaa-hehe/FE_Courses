@@ -5,6 +5,7 @@ import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import FavoriteAPI from "../api/favoriteAPI.jsx";
 import CartAPI from "../api/cartAPI.jsx";
+import { getImageUrl } from "../config/apiConfig.jsx";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -397,7 +398,7 @@ export default function Home() {
                     <div className="relative aspect-video overflow-hidden bg-gray-800">
                       {course.thumbnailUrl ? (
                         <img
-                          src={course.thumbnailUrl}
+                          src={getImageUrl(course.thumbnailUrl)}
                           alt={course.title}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                           onError={(e) => {
