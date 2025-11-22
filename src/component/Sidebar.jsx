@@ -8,16 +8,12 @@ export default function Sidebar({ onLogout }) {
 
   const menuItems = [
     { icon: "home", label: "Dashboard", path: "/home" },
-    { icon: "explore", label: "Explore", path: "/explore" },
-    { icon: "shopping_cart", label: "Cart", path: "/cart" },
-    { icon: "school", label: "My Courses", path: "/courses" },
+    { icon: "school", label: "My Courses", path: "/my-courses" },
     { icon: "favorite", label: "Favorites", path: "/favorites" },
   ];
 
   const settingsItems = [
     { icon: "account_circle", label: "Profile", path: "/profile" },
-    { icon: "settings", label: "Settings", path: "/settings" },
-    { icon: "help", label: "Help & Support", path: "/help" },
   ];
 
   const isActive = (path) => location.pathname === path;

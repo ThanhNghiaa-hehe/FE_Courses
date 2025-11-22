@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
+import { handleLogout as logout } from "../utils/auth.js";
 
 export default function MyCourses() {
   const navigate = useNavigate();
@@ -25,25 +26,40 @@ export default function MyCourses() {
     try {
       setLoading(true);
       setError(null);
-      const response = await CourseAPI.getAllPublishedCourses();
       
-      if (response.data.success) {
-        setCourses(response.data.data || []);
+      // Lấy danh sách khóa học đã đăng ký từ localStorage
+      const enrolledCourseIds = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
+      console.log('Enrolled course IDs:', enrolledCourseIds);
+      
+      if (enrolledCourseIds.length === 0) {
+        setCourses([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Lấy thông tin của các khóa học đã đăng ký
+      const allCoursesRes = await CourseAPI.getAllPublishedCourses();
+      if (allCoursesRes.data.success) {
+        const allCourses = allCoursesRes.data.data || [];
+        // Lọc ra những khóa học đã đăng ký
+        const enrolledCourses = allCourses.filter(course => 
+          enrolledCourseIds.includes(course.id)
+        );
+        console.log('Enrolled courses:', enrolledCourses);
+        setCourses(enrolledCourses);
       } else {
-        setError(response.data.message || "Failed to load courses");
+        setError(allCoursesRes.data.message || "Failed to load courses");
       }
     } catch (err) {
       console.error("Error fetching courses:", err);
-      setError(err.response?.data?.message || "Failed to load courses");
+      setError(err.response?.data?.message || "Failed to load enrolled courses");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("userEmail");
-    navigate("/auth");
+    logout(navigate);
   };
 
   const formatPrice = (price) => {
@@ -152,16 +168,16 @@ export default function MyCourses() {
                 school
               </span>
               <h3 className="mb-2 text-xl font-semibold text-white">
-                No courses found
+                Bạn chưa đăng ký khóa học nào
               </h3>
               <p className="mb-6 text-gray-400">
-                Start exploring and enroll in courses to see them here
+                Khám phá và đăng ký khóa học để bắt đầu học
               </p>
               <button
-                onClick={() => navigate("/explore")}
+                onClick={() => navigate("/home")}
                 className="rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold text-white transition hover:shadow-lg"
               >
-                Explore Courses
+                Khám phá khóa học
               </button>
             </div>
           ) : (
@@ -179,7 +195,7 @@ export default function MyCourses() {
                         alt={course.title}
                         className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/400x225/1a1a1a/666?text=No+Image";
+                          e.target.src = "http://localhost:8080/static/courses/html-css.jpg";
                         }}
                       />
                     ) : (
@@ -234,10 +250,10 @@ export default function MyCourses() {
                         </p>
                       </div>
                       <button
-                        onClick={() => navigate(`/course/${course.id}`)}
+                        onClick={() => navigate(`/course/${course.id}/learn`)}
                         className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-700"
                       >
-                        View Course
+                        Học ngay
                       </button>
                     </div>
                   </div>

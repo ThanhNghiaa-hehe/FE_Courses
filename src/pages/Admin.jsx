@@ -33,6 +33,8 @@ export default function AdminCourses() {
     level: "Beginner",
     isPublished: false,
   });
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -166,6 +168,8 @@ export default function AdminCourses() {
       isPublished: false,
     });
     setEditingCourse(null);
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
     setShowCourseModal(true);
   };
 
@@ -181,6 +185,8 @@ export default function AdminCourses() {
       isPublished: course.published || false,
     });
     setEditingCourse(course);
+    setThumbnailFile(null);
+    setThumbnailPreview(course.thumbnailUrl || null); // Hiển thị thumbnail cũ
     setShowCourseModal(true);
   };
 
@@ -191,8 +197,27 @@ export default function AdminCourses() {
         return;
       }
 
+      let thumbnailUrl = courseForm.thumbnailUrl;
+
+      // Nếu có file mới được chọn, upload file trước
+      if (thumbnailFile) {
+        try {
+          const uploadResponse = await AdminAPI.uploadThumbnail(thumbnailFile);
+          if (uploadResponse.data.success) {
+            thumbnailUrl = uploadResponse.data.data; // URL trả về từ backend
+          } else {
+            alert("Failed to upload thumbnail");
+            return;
+          }
+        } catch (uploadErr) {
+          alert(uploadErr.response?.data?.message || "Failed to upload thumbnail");
+          return;
+        }
+      }
+
       const payload = {
         ...courseForm,
+        thumbnailUrl,
         price: parseFloat(courseForm.price),
         duration: parseFloat(courseForm.duration),
       };
@@ -206,6 +231,8 @@ export default function AdminCourses() {
           alert("Course updated successfully!");
           fetchCourses();
           setShowCourseModal(false);
+          setThumbnailFile(null);
+          setThumbnailPreview(null);
         }
       } else {
         const response = await AdminAPI.createCourse(payload);
@@ -213,6 +240,8 @@ export default function AdminCourses() {
           alert("Course created successfully!");
           fetchCourses();
           setShowCourseModal(false);
+          setThumbnailFile(null);
+          setThumbnailPreview(null);
         }
       }
     } catch (err) {
@@ -429,6 +458,13 @@ export default function AdminCourses() {
                           </div>
                           <div className="mt-4 flex gap-2">
                             <button
+                              onClick={() => navigate(`/admin/courses/${course.id}/content`)}
+                              className="flex items-center gap-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+                            >
+                              <span className="material-symbols-outlined text-sm">school</span>
+                              Manage Content
+                            </button>
+                            <button
                               onClick={() => handleEditCourse(course)}
                               className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                             >
@@ -592,14 +628,28 @@ export default function AdminCourses() {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-400">Thumbnail URL</label>
+                <label className="mb-1 block text-sm font-medium text-gray-400">Thumbnail Image</label>
                 <input
-                  type="text"
-                  value={courseForm.thumbnailUrl}
-                  onChange={(e) => setCourseForm({ ...courseForm, thumbnailUrl: e.target.value })}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white focus:border-purple-500 focus:outline-none"
-                  placeholder="http://localhost:8080/uploads/..."
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setThumbnailFile(file);
+                      setThumbnailPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-white focus:border-purple-500 focus:outline-none file:mr-4 file:rounded file:border-0 file:bg-purple-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-purple-700"
                 />
+                {thumbnailPreview && (
+                  <div className="mt-3">
+                    <img
+                      src={thumbnailPreview}
+                      alt="Preview"
+                      className="h-32 w-auto rounded-lg border border-gray-700 object-cover"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <input

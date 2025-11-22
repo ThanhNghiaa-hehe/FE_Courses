@@ -4,8 +4,8 @@ import { jwtDecode } from "jwt-decode";
 import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import FavoriteAPI from "../api/favoriteAPI.jsx";
-import CartAPI from "../api/cartAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
+import { handleLogout as logout } from "../utils/auth.js";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [favoriteCourseIds, setFavoriteCourseIds] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -25,12 +26,13 @@ export default function Home() {
       return;
     }
 
+    let uid = "";
     try {
       const decoded = jwtDecode(token);
       console.log("🔑 Decoded token:", decoded);
       
       // Lấy userId từ token - ưu tiên field 'id'
-      const uid = decoded.id || decoded.userId || decoded.sub;
+      uid = decoded.id || decoded.userId || decoded.sub;
       console.log("👤 Extracted userId:", uid);
       setUserId(uid);
       
@@ -43,6 +45,9 @@ export default function Home() {
     }
 
     fetchData();
+    if (uid) {
+      loadFavorites(uid);
+    }
   }, [navigate]);
 
   useEffect(() => {
@@ -106,91 +111,82 @@ export default function Home() {
     }
   };
 
+  const loadFavorites = async (uid) => {
+    try {
+      const res = await FavoriteAPI.getUserFavorites(uid);
+      if (res.data.success) {
+        const favoritesData = res.data.data || [];
+        const favoriteItems = favoritesData[0]?.favoriteItem || [];
+        const courseIds = favoriteItems.map(item => item.courseId);
+        setFavoriteCourseIds(courseIds);
+        console.log('✅ Loaded favorites:', courseIds);
+      }
+    } catch (err) {
+      console.error('❌ Error loading favorites:', err);
+    }
+  };
+
+  const isFavorite = (courseId) => {
+    return favoriteCourseIds.includes(courseId);
+  };
+
+  const handleToggleFavorite = async (course) => {
+    if (!userId) {
+      alert('Vui lòng đăng nhập!');
+      return;
+    }
+
+    try {
+      if (isFavorite(course.id)) {
+        // Xóa khỏi favorites
+        await FavoriteAPI.removeFromFavorite(userId, course.id);
+        setFavoriteCourseIds(favoriteCourseIds.filter(id => id !== course.id));
+        alert('Đã xóa khỏi danh sách yêu thích!');
+      } else {
+        // Thêm vào favorites
+        const favoriteRequest = {
+          courseId: course.id,
+          title: course.title,
+          thumbnailUrl: course.thumbnailUrl,
+          price: course.price,
+          discountedPrice: course.discountedPrice,
+          discountPercent: course.discountPercent,
+          level: course.level,
+          duration: course.duration,
+          instructorName: course.instructorName,
+          rating: course.rating,
+          totalStudents: course.totalStudents,
+        };
+        await FavoriteAPI.addToFavorite(userId, favoriteRequest);
+        setFavoriteCourseIds([...favoriteCourseIds, course.id]);
+        alert('Đã thêm vào danh sách yêu thích!');
+      }
+    } catch (err) {
+      console.error('❌ Error toggling favorite:', err);
+      alert(err.response?.data?.message || 'Có lỗi xảy ra!');
+    }
+  };
+
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userRole");
-    navigate("/auth");
+    logout(navigate);
   };
 
-  const handleAddToFavorite = async (course) => {
-    if (!userId) {
-      alert("Vui lòng đăng nhập!");
-      return;
-    }
-
-    try {
-      const favoriteRequest = {
-        courseId: course.id,
-        title: course.title,
-        thumbnailUrl: course.thumbnailUrl,
-        price: course.price,
-        discountedPrice: course.discountedPrice,
-        discountPercent: course.discountPercent,
-        level: course.level,
-        duration: course.duration,
-        instructorName: course.instructorName,
-        rating: course.rating,
-        totalStudents: course.totalStudents,
-      };
-
-      const res = await FavoriteAPI.addToFavorite(userId, favoriteRequest);
-
-      if (res.data.success) {
-        alert("Đã thêm vào danh sách yêu thích! ❤️");
-      } else {
-        alert(res.data.message || "Thêm vào yêu thích thất bại");
-      }
-    } catch (err) {
-      console.error("Error adding to favorite:", err);
-      alert(err.response?.data?.message || "Lỗi khi thêm vào yêu thích");
-    }
-  };
-
-  const handleAddToCart = async (course) => {
-    if (!userId) {
-      alert("Vui lòng đăng nhập!");
-      return;
-    }
-
-    console.log("🛒 Adding to cart - userId:", userId);
-    console.log("📚 Course:", course);
-
-    try {
-      const cartItem = {
-        courseId: course.id,
-        title: course.title,
-        thumbnailUrl: course.thumbnailUrl,
-        price: course.price,
-        discountedPrice: course.discountedPrice,
-        discountPercent: course.discountPercent,
-        level: course.level,
-        duration: course.duration,
-        instructorName: course.instructorName,
-        rating: course.rating,
-        totalStudents: course.totalStudents,
-      };
-
-      console.log("📦 Cart item payload:", cartItem);
-      const res = await CartAPI.addToCart(userId, cartItem);
-      console.log("✅ Cart response:", res.data);
-
-      if (res.data.success) {
-        alert("Đã thêm vào giỏ hàng! 🛒");
-      } else {
-        alert(res.data.message || "Thêm vào giỏ hàng thất bại");
-      }
-    } catch (err) {
-      console.error("❌ Error adding to cart:", err);
-      console.error("❌ Error response:", err.response?.data);
-      alert(err.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
-    }
-  };
+  // Thêm loading state check
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-700 border-t-purple-500"></div>
+          <p className="text-gray-400">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-900">
-        <div className="text-white">Loading...</div>
+      <div className="flex h-screen items-center justify-center bg-gray-950">
+        <div className="text-white">Loading user info...</div>
       </div>
     );
   }
@@ -210,33 +206,6 @@ export default function Home() {
               <p className="text-sm text-gray-400">Welcome back, {user.name}!</p>
             </div>
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => navigate("/favorites")}
-                className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
-                title="Yêu thích"
-              >
-                <span className="material-symbols-outlined">favorite</span>
-              </button>
-              <button 
-                onClick={() => navigate("/cart")}
-                className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
-                title="Giỏ hàng"
-              >
-                <span className="material-symbols-outlined">shopping_cart</span>
-              </button>
-              <button 
-                onClick={() => navigate("/orders")}
-                className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
-                title="Đơn hàng"
-              >
-                <span className="material-symbols-outlined">receipt_long</span>
-              </button>
-              <button className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
-              <button className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white">
-                <span className="material-symbols-outlined">search</span>
-              </button>
               <button 
                 onClick={() => navigate("/profile")}
                 className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
@@ -425,29 +394,19 @@ export default function Home() {
                         {course.level}
                       </div>
 
-                      {/* Quick Actions */}
-                      <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 transition group-hover:opacity-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddToFavorite(course);
-                          }}
-                          className="rounded-full bg-white/90 p-2 text-red-500 hover:bg-white"
-                          title="Thêm vào yêu thích"
-                        >
-                          <span className="material-symbols-outlined text-xl">favorite</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddToCart(course);
-                          }}
-                          className="rounded-full bg-white/90 p-2 text-purple-600 hover:bg-white"
-                          title="Thêm vào giỏ hàng"
-                        >
-                          <span className="material-symbols-outlined text-xl">shopping_cart</span>
-                        </button>
-                      </div>
+                      {/* Favorite Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleFavorite(course);
+                        }}
+                        className="absolute bottom-2 right-2 rounded-full bg-white/90 p-2 text-red-500 shadow-lg transition hover:bg-white hover:scale-110"
+                        title={isFavorite(course.id) ? "Xóa khỏi yêu thích" : "Thêm vào yêu thích"}
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {isFavorite(course.id) ? "favorite" : "favorite_border"}
+                        </span>
+                      </button>
                     </div>
 
                     {/* Content */}

@@ -75,6 +75,21 @@ const AdminAPI = {
     return axiosInstance.delete(`/admin/courses/delete/${id}`);
   },
 
+  /**
+   * 📤 Upload thumbnail cho khóa học
+   * @param {File} file - Image file
+   * @returns Response format: { success: true, data: "http://localhost:8080/static/courses/filename.jpg" }
+   */
+  uploadThumbnail: (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return axiosInstance.post("/admin/courses/upload-thumbnail", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   // ==================== USERS ====================
 
   /**

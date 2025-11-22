@@ -30,9 +30,8 @@ export const getImageUrl = (imagePath) => {
     return `${STATIC_BASE_URL}${imagePath}`;
   }
   
-  // Nếu chỉ là tên file, thử cả /uploads/products/ VÀ /static/products/
-  // Backend có thể serve ở 1 trong 2 path này
-  return `${STATIC_BASE_URL}/uploads/products/${imagePath}`;
+  // Nếu chỉ là tên file, backend serve tại /static/courses/
+  return `${STATIC_BASE_URL}/static/courses/${imagePath}`;
 };
 
 export default API_BASE_URL;

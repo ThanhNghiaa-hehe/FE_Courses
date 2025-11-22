@@ -113,93 +113,101 @@ export default function AuthModal() {
 
   // Login
   const login = async () => {
-  try {
-    setLoginLoading(true);
-    const res = await AuthAPI.login({
-      email: loginEmail,
-      password: loginPassword,
-    });
+    try {
+      setLoginLoading(true);
+      const res = await AuthAPI.login({
+        email: loginEmail,
+        password: loginPassword,
+      });
 
-    console.log("🔍 LOGIN RESPONSE:", res.data);
+      console.log("🔍 LOGIN RESPONSE:", res.data);
 
-    const accessToken = res.data?.data?.accessToken;
+      const accessToken = res.data?.data?.accessToken;
 
-    if (res.data.success && accessToken) {
-      // Decode JWT token để lấy role
-      const decoded = jwtDecode(accessToken);
-      console.log("🔓 Decoded Token:", decoded);
-      
-      const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
-      console.log("👤 User Role:", userRole);
-      console.log("🔍 Checking role:", userRole, "=== 'ADMIN'?", userRole === "ADMIN");
-      console.log("🔍 Checking role:", userRole, "=== 'ROLE_ADMIN'?", userRole === "ROLE_ADMIN");
+      if (res.data.success && accessToken) {
+        // Decode JWT token để lấy role
+        const decoded = jwtDecode(accessToken);
+        console.log("🔓 Decoded Token:", decoded);
+        
+        const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+        console.log("👤 User Role:", userRole);
 
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("userEmail", loginEmail);
-      if (userRole) {
-        localStorage.setItem("userRole", userRole);
-      }
-      
-      console.log("✅ Role saved to localStorage:", localStorage.getItem("userRole"));
-      
-      // Tự động redirect dựa vào role
-      if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
-        console.log("🔴 Redirecting to ADMIN dashboard");
-        alert("Redirecting to Admin Dashboard!");
-        navigate("/admin/dashboard");
+        // Clear old data first
+        localStorage.clear();
+        
+        // Set new auth data
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("userEmail", loginEmail);
+        if (userRole) {
+          localStorage.setItem("userRole", userRole);
+        }
+        
+        console.log("✅ Auth data saved to localStorage");
+        
+        // Tự động redirect dựa vào role
+        if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
+          console.log("🔴 Redirecting to ADMIN dashboard");
+          navigate("/admin/dashboard", { replace: true });
+        } else {
+          console.log("🟢 Redirecting to USER home");
+          navigate("/home", { replace: true });
+        }
       } else {
-        console.log("🟢 Redirecting to USER home");
-        alert("Redirecting to User Home!");
-        navigate("/home");
+        alert(res.data.message || "Login failed");
       }
-    } else {
-      alert(res.data.message || "Login failed");
+    } catch (e) {
+      console.error("❌ Login error:", e);
+      alert(e.response?.data?.message || "Login error");
+    } finally {
+      setLoginLoading(false);
     }
-  } catch (e) {
-    console.error("❌ Login error:", e);
-    alert(e.response?.data?.message || "Login error");
-  } finally {
-    setLoginLoading(false);
-  }
-};
+  };
 
 
   // Firebase Google Sign-In
   const googleSignIn = async () => {
-  try {
-    setGoogleLoading(true);
+    try {
+      setGoogleLoading(true);
 
-    const idToken = await signInWithGoogle();
+      const idToken = await signInWithGoogle();
 
-    const res = await AuthAPI.googleLogin(idToken);
+      const res = await AuthAPI.googleLogin(idToken);
 
-    if (res.data.success) {
-      const token = res.data.data?.accessToken;
-      
-      // Decode JWT token để lấy role
-      const decoded = jwtDecode(token);
-      const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
-      
-      localStorage.setItem("accessToken", token);
-      if (userRole) {
-        localStorage.setItem("userRole", userRole);
-      }
-      
-      // Tự động redirect dựa vào role
-      if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
-        navigate("/admin/dashboard");
+      if (res.data.success) {
+        const token = res.data.data?.accessToken;
+        
+        // Decode JWT token để lấy role
+        const decoded = jwtDecode(token);
+        const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+        const userEmail = decoded.email || decoded.sub;
+        
+        // Clear old data first
+        localStorage.clear();
+        
+        // Set new auth data
+        localStorage.setItem("accessToken", token);
+        if (userEmail) {
+          localStorage.setItem("userEmail", userEmail);
+        }
+        if (userRole) {
+          localStorage.setItem("userRole", userRole);
+        }
+        
+        // Tự động redirect dựa vào role
+        if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
+          navigate("/admin/dashboard", { replace: true });
+        } else {
+          navigate("/home", { replace: true });
+        }
       } else {
-        navigate("/home");
+        alert(res.data.message || "Google login failed");
       }
-    } else {
-      alert(res.data.message || "Google login failed");
+    } catch (e) {
+      alert(e.response?.data?.message || "Google login error");
+    } finally {
+      setGoogleLoading(false);
     }
-  } catch (e) {
-    alert(e.response?.data?.message || "Google login error");
-  } finally {
-    setGoogleLoading(false);
-  }
-};
+  };
 
   // Forgot Password - Step 1: Send OTP to email
   const sendForgotPasswordOtp = async () => {

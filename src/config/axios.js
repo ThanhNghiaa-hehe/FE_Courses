@@ -8,7 +8,7 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Cho phép gửi cookie nếu BE dùng refresh-token
+  // withCredentials: true, // Tắt vì dùng JWT trong header, không cần cookies
 });
 
 // 🧩 Interceptor trước khi gửi request
@@ -28,11 +28,20 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Nếu token hết hạn hoặc lỗi 401 → có thể tự logout hoặc refresh token
+    // Nếu token hết hạn hoặc lỗi 401 → tự logout và redirect
     if (error.response && error.response.status === 401) {
       console.warn("⚠️ Token hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.");
+      
+      // Clear all auth data
       localStorage.removeItem("accessToken");
-      // window.location.href = "/login"; // Tùy chọn: điều hướng về login
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("enrolledCourses");
+      
+      // Redirect to auth page
+      if (window.location.pathname !== '/auth' && window.location.pathname !== '/') {
+        window.location.href = "/auth";
+      }
     }
     return Promise.reject(error);
   }
