@@ -11,8 +11,6 @@ export default function AdminSidebar({ onLogout }) {
     { icon: "school", label: "Courses", path: "/admin/courses" },
     { icon: "category", label: "Categories", path: "/admin/categories" },
     { icon: "people", label: "Users", path: "/admin/users" },
-    { icon: "assignment", label: "Enrollments", path: "/admin/enrollments" },
-    { icon: "analytics", label: "Analytics", path: "/admin/analytics" },
   ];
 
   const isActive = (path) => location.pathname === path;

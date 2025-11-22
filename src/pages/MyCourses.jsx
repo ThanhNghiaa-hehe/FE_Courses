@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../component/Sidebar.jsx";
+import ThemeToggle from "../component/ThemeToggle.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import { handleLogout as logout } from "../utils/auth.js";
@@ -27,32 +28,43 @@ export default function MyCourses() {
       setLoading(true);
       setError(null);
       
-      // Lấy danh sách khóa học đã đăng ký từ localStorage
-      const enrolledCourseIds = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
-      console.log('Enrolled course IDs:', enrolledCourseIds);
+      // Lấy danh sách courseId đã đăng ký từ localStorage
+      const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
+      console.log('📚 Enrolled course IDs from localStorage:', enrolledCourses);
       
-      if (enrolledCourseIds.length === 0) {
+      if (enrolledCourses.length === 0) {
         setCourses([]);
         setLoading(false);
         return;
       }
       
-      // Lấy thông tin của các khóa học đã đăng ký
-      const allCoursesRes = await CourseAPI.getAllPublishedCourses();
-      if (allCoursesRes.data.success) {
-        const allCourses = allCoursesRes.data.data || [];
-        // Lọc ra những khóa học đã đăng ký
-        const enrolledCourses = allCourses.filter(course => 
-          enrolledCourseIds.includes(course.id)
-        );
-        console.log('Enrolled courses:', enrolledCourses);
-        setCourses(enrolledCourses);
-      } else {
-        setError(allCoursesRes.data.message || "Failed to load courses");
-      }
+      // Lấy thông tin chi tiết từng khóa học
+      const coursePromises = enrolledCourses.map(async (courseId) => {
+        try {
+          const res = await CourseAPI.getCourseById(courseId);
+          if (res.data.success) {
+            return {
+              ...res.data.data,
+              progressPercentage: 0,
+              completedLessons: 0,
+              totalLessons: 0
+            };
+          }
+          return null;
+        } catch (err) {
+          console.error(`Error fetching course ${courseId}:`, err);
+          return null;
+        }
+      });
+      
+      const coursesData = await Promise.all(coursePromises);
+      const validCourses = coursesData.filter(course => course !== null);
+      
+      console.log('✅ My courses count:', validCourses.length);
+      setCourses(validCourses);
     } catch (err) {
-      console.error("Error fetching courses:", err);
-      setError(err.response?.data?.message || "Failed to load enrolled courses");
+      console.error("❌ Error fetching my courses:", err);
+      setError("Failed to load enrolled courses");
     } finally {
       setLoading(false);
     }
@@ -80,7 +92,7 @@ export default function MyCourses() {
 
   const filteredCourses = courses.filter((course) => {
     if (filter === "all") return true;
-    // Có thể thêm logic filter theo progress sau
+    // Filter sẽ hoạt động sau khi tích hợp Progress API đúng cách
     return true;
   });
 
@@ -100,6 +112,7 @@ export default function MyCourses() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <button
                   onClick={fetchCourses}
                   className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
@@ -258,15 +271,22 @@ export default function MyCourses() {
                     </div>
                   </div>
 
-                  {/* Progress Bar (optional - có thể thêm sau) */}
+                  {/* Progress Bar - Tạm ẩn cho đến khi backend Progress API hoạt động đúng */}
                   {/* <div className="px-5 pb-5">
+                    <div className="mb-2 flex items-center justify-between text-xs">
+                      <span className="text-gray-500">
+                        {course.completedLessons || 0}/{course.totalLessons || 0} lessons
+                      </span>
+                      <span className="font-semibold text-purple-400">
+                        {course.progressPercentage || 0}%
+                      </span>
+                    </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-gray-800">
                       <div
-                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                        style={{ width: "0%" }}
+                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                        style={{ width: `${course.progressPercentage || 0}%` }}
                       ></div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">0% completed</p>
                   </div> */}
                 </div>
               ))}

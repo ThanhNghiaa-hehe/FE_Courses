@@ -1,15 +1,38 @@
 /**
  * Utility function để logout an toàn
- * Clear tất cả data và redirect về auth page
+ * Clear authentication data nhưng giữ lại enrolled courses và favorites
  */
 export const handleLogout = (navigate) => {
-  // Clear all authentication data
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("userEmail");
-  localStorage.removeItem("userRole");
-  localStorage.removeItem("enrolledCourses");
+  // Backup enrolled courses và favorites trước khi clear
+  const enrolledCourses = localStorage.getItem("enrolledCourses");
+  const favoriteCourses = localStorage.getItem("favoriteCourses");
   
-  // Clear any other cached data
+  // Backup tất cả progress data (có format: progress_userId_courseId)
+  const progressData = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("progress_")) {
+      progressData[key] = localStorage.getItem(key);
+    }
+  }
+  
+  // Clear all localStorage
+  localStorage.clear();
+  
+  // Restore enrolled courses và favorites
+  if (enrolledCourses) {
+    localStorage.setItem("enrolledCourses", enrolledCourses);
+  }
+  if (favoriteCourses) {
+    localStorage.setItem("favoriteCourses", favoriteCourses);
+  }
+  
+  // Restore progress data
+  Object.keys(progressData).forEach(key => {
+    localStorage.setItem(key, progressData[key]);
+  });
+  
+  // Clear session storage
   sessionStorage.clear();
   
   console.log("✅ Logged out successfully");

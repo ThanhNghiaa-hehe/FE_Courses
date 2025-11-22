@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../component/AdminSidebar.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function AdminDashboard() {
 
     // Kiểm tra role admin - chỉ ADMIN hoặc ROLE_ADMIN mới được truy cập
     if (userRole !== "ADMIN" && userRole !== "ROLE_ADMIN") {
-      alert("Access denied! Admin only.");
+      toast.error("Access denied! Admin only.");
       navigate("/home");
       return;
     }

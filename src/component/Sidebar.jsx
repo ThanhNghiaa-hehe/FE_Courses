@@ -20,21 +20,26 @@ export default function Sidebar({ onLogout }) {
 
   return (
     <div
-      className={`flex h-screen flex-col border-r border-gray-800 bg-gray-900 transition-all duration-300 ${
+      className={`flex h-screen flex-col transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       }`}
+      style={{
+        borderRight: `2px solid var(--border-color)`,
+        backgroundColor: 'var(--bg-secondary)'
+      }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 border-b border-gray-800 p-4">
+      <div className="flex items-center gap-3 p-4" style={{ borderBottom: `2px solid var(--border-color)` }}>
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
           <span className="text-xl font-bold text-white">C</span>
         </div>
         {!isCollapsed && (
-          <h1 className="text-xl font-bold text-white">CodeLearn</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>CodeLearn</h1>
         )}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="ml-auto text-gray-400 hover:text-white"
+          className="ml-auto"
+          style={{ color: 'var(--text-secondary)' }}
         >
           <span className="material-symbols-outlined">
             {isCollapsed ? "chevron_right" : "chevron_left"}
@@ -49,11 +54,23 @@ export default function Sidebar({ onLogout }) {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition ${
-                isActive(item.path)
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
-              }`}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition"
+              style={{
+                background: isActive(item.path) ? 'linear-gradient(to right, #9333ea, #ec4899)' : 'transparent',
+                color: isActive(item.path) ? '#ffffff' : 'var(--text-secondary)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
+              }}
               title={isCollapsed ? item.label : ""}
             >
               <span className="material-symbols-outlined text-[22px] flex-shrink-0">
@@ -67,7 +84,7 @@ export default function Sidebar({ onLogout }) {
         </div>
 
         {/* Divider */}
-        <div className="my-4 border-t border-gray-800"></div>
+        <div className="my-4" style={{ borderTop: `2px solid var(--border-color)` }}></div>
 
         {/* Settings */}
         <div className="space-y-1">
@@ -75,11 +92,23 @@ export default function Sidebar({ onLogout }) {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition ${
-                isActive(item.path)
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
-              }`}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 transition"
+              style={{
+                background: isActive(item.path) ? 'linear-gradient(to right, #9333ea, #ec4899)' : 'transparent',
+                color: isActive(item.path) ? '#ffffff' : 'var(--text-secondary)'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.path)) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }
+              }}
               title={isCollapsed ? item.label : ""}
             >
               <span className="material-symbols-outlined text-[22px] flex-shrink-0">
@@ -94,15 +123,15 @@ export default function Sidebar({ onLogout }) {
       </nav>
 
       {/* User Profile & Logout */}
-      <div className="border-t border-gray-800 p-4">
+      <div className="p-4" style={{ borderTop: `2px solid var(--border-color)` }}>
         <div className={`flex items-center gap-3 mb-3 ${isCollapsed ? "justify-center" : ""}`}>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex-shrink-0">
             <span className="text-sm font-bold text-white">U</span>
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-white">User</p>
-              <p className="truncate text-xs text-gray-400">
+              <p className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>User</p>
+              <p className="truncate text-xs" style={{ color: 'var(--text-secondary)' }}>
                 {localStorage.getItem("userEmail") || "user@example.com"}
               </p>
             </div>

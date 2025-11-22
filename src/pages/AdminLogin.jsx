@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthAPI from "../api/authApi.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -33,14 +34,17 @@ export default function AdminLogin() {
         if (userRole === "ADMIN") {
           navigate("/admin/dashboard");
         } else {
-          alert("Access denied! Admin accounts only.");
-          localStorage.clear();
+          toast.error("Access denied! Admin accounts only.");
+          // Chỉ xóa token, không xóa user data
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("userEmail");
+          localStorage.removeItem("userRole");
         }
       } else {
-        alert(res.data.message || "Login failed");
+        toast.error(res.data.message || "Login failed");
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Login error");
+      toast.error(e.response?.data?.message || "Login error");
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { signInWithGoogle } from "../config/firebaseConfig.jsx";
 import AuthAPI from "../api/authApi.jsx";
+import toast from "../utils/toast.js";
  // Firebase config và signInWithGoogle
 
 export default function AuthModal() {
@@ -65,12 +66,12 @@ export default function AuthModal() {
     if (res.data.success && token) {
       setOtpToken(token);
       setStep("verify-otp"); // ← THÊM DÒNG NÀY để chuyển sang bước nhập OTP
-      alert("Gửi OTP thành công! Vui lòng kiểm tra email của bạn.");
+      toast.success("Gửi OTP thành công! Vui lòng kiểm tra email của bạn.");
     } else {
-      alert(res.data.message || "Register failed");
+      toast.error(res.data.message || "Register failed");
     }
   } catch (e) {
-    alert(e.response?.data?.message || "Error");
+    toast.error(e.response?.data?.message || "Error");
   } finally {
     setRegisterLoading(false);
   }
@@ -132,8 +133,20 @@ export default function AuthModal() {
         const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
         console.log("👤 User Role:", userRole);
 
-        // Clear old data first
+        // Backup enrolled courses và favorites trước khi clear
+        const enrolledCourses = localStorage.getItem("enrolledCourses");
+        const favoriteCourses = localStorage.getItem("favoriteCourses");
+
+        // Clear old auth data
         localStorage.clear();
+        
+        // Restore user data
+        if (enrolledCourses) {
+          localStorage.setItem("enrolledCourses", enrolledCourses);
+        }
+        if (favoriteCourses) {
+          localStorage.setItem("favoriteCourses", favoriteCourses);
+        }
         
         // Set new auth data
         localStorage.setItem("accessToken", accessToken);
@@ -153,11 +166,11 @@ export default function AuthModal() {
           navigate("/home", { replace: true });
         }
       } else {
-        alert(res.data.message || "Login failed");
+        toast.error(res.data.message || "Login failed");
       }
     } catch (e) {
       console.error("❌ Login error:", e);
-      alert(e.response?.data?.message || "Login error");
+      toast.error(e.response?.data?.message || "Login error");
     } finally {
       setLoginLoading(false);
     }
@@ -181,8 +194,20 @@ export default function AuthModal() {
         const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
         const userEmail = decoded.email || decoded.sub;
         
+        // Backup enrolled courses và favorites trước khi clear
+        const enrolledCourses = localStorage.getItem("enrolledCourses");
+        const favoriteCourses = localStorage.getItem("favoriteCourses");
+        
         // Clear old data first
         localStorage.clear();
+        
+        // Restore user data
+        if (enrolledCourses) {
+          localStorage.setItem("enrolledCourses", enrolledCourses);
+        }
+        if (favoriteCourses) {
+          localStorage.setItem("favoriteCourses", favoriteCourses);
+        }
         
         // Set new auth data
         localStorage.setItem("accessToken", token);
@@ -200,10 +225,10 @@ export default function AuthModal() {
           navigate("/home", { replace: true });
         }
       } else {
-        alert(res.data.message || "Google login failed");
+        toast.error(res.data.message || "Google login failed");
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Google login error");
+      toast.error(e.response?.data?.message || "Google login error");
     } finally {
       setGoogleLoading(false);
     }
@@ -218,12 +243,12 @@ export default function AuthModal() {
       if (res.data.success) {
         setForgotPasswordToken(res.data.data?.token);
         setForgotPasswordStep("verify-otp");
-        alert("OTP đã được gửi đến email của bạn!");
+        toast.success("OTP đã được gửi đến email của bạn!");
       } else {
-        alert(res.data.message || "Gửi OTP thất bại");
+        toast.error(res.data.message || "Gửi OTP thất bại");
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Email không tồn tại");
+      toast.error(e.response?.data?.message || "Email không tồn tại");
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -240,12 +265,12 @@ export default function AuthModal() {
 
       if (res.data.success) {
         setForgotPasswordStep("reset-password");
-        alert("Xác thực OTP thành công!");
+        toast.success("Xác thực OTP thành công!");
       } else {
-        alert(res.data.message || "OTP không đúng");
+        toast.error(res.data.message || "OTP không đúng");
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Xác thực OTP thất bại");
+      toast.error(e.response?.data?.message || "Xác thực OTP thất bại");
     } finally {
       setForgotPasswordLoading(false);
     }
@@ -262,7 +287,7 @@ export default function AuthModal() {
       });
 
       if (res.data.success) {
-        alert("Đặt lại mật khẩu thành công!");
+        toast.success("Đặt lại mật khẩu thành công!");
         // Reset states
         setShowForgotPassword(false);
         setForgotPasswordStep("email");
@@ -271,10 +296,10 @@ export default function AuthModal() {
         setNewPassword("");
         setActiveTab("login");
       } else {
-        alert(res.data.message || "Đặt lại mật khẩu thất bại");
+        toast.error(res.data.message || "Đặt lại mật khẩu thất bại");
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Đặt lại mật khẩu thất bại");
+      toast.error(e.response?.data?.message || "Đặt lại mật khẩu thất bại");
     } finally {
       setForgotPasswordLoading(false);
     }

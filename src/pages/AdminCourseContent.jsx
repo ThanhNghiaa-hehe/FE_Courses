@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminSidebar from "../component/AdminSidebar.jsx";
 import LessonAPI from "../api/lessonAPI.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminCourseContent() {
   const { courseId } = useParams();
@@ -70,7 +71,7 @@ export default function AdminCourseContent() {
       }
     } catch (err) {
       console.error("Error fetching course content:", err);
-      alert(err.response?.data?.message || "Failed to load course content");
+      toast.error(err.response?.data?.message || "Failed to load course content");
     } finally {
       setLoading(false);
     }
@@ -103,27 +104,27 @@ export default function AdminCourseContent() {
   const handleSaveChapter = async () => {
     try {
       if (!chapterForm.title) {
-        alert("Please enter chapter title");
+        toast.warning("Please enter chapter title");
         return;
       }
 
       if (editingChapter) {
         const res = await LessonAPI.updateChapter(editingChapter.id, chapterForm);
         if (res.data.success) {
-          alert("Chapter updated successfully!");
+          toast.success("Chapter updated successfully!");
           fetchCourseContent();
           setShowChapterModal(false);
         }
       } else {
         const res = await LessonAPI.createChapter(chapterForm);
         if (res.data.success) {
-          alert("Chapter created successfully!");
+          toast.success("Chapter created successfully!");
           fetchCourseContent();
           setShowChapterModal(false);
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save chapter");
+      toast.error(err.response?.data?.message || "Failed to save chapter");
     }
   };
 
@@ -133,11 +134,11 @@ export default function AdminCourseContent() {
     try {
       const res = await LessonAPI.deleteChapter(id);
       if (res.data.success) {
-        alert("Chapter deleted successfully!");
+        toast.success("Chapter deleted successfully!");
         fetchCourseContent();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete chapter");
+      toast.error(err.response?.data?.message || "Failed to delete chapter");
     }
   };
 
@@ -181,7 +182,7 @@ export default function AdminCourseContent() {
   const handleSaveLesson = async () => {
     try {
       if (!lessonForm.title || !lessonForm.chapterId) {
-        alert("Please fill in required fields");
+        toast.warning("Please fill in required fields");
         return;
       }
 
@@ -194,20 +195,20 @@ export default function AdminCourseContent() {
       if (editingLesson) {
         const res = await LessonAPI.updateLesson(editingLesson.id, payload);
         if (res.data.success) {
-          alert("Lesson updated successfully!");
+          toast.success("Lesson updated successfully!");
           fetchCourseContent();
           setShowLessonModal(false);
         }
       } else {
         const res = await LessonAPI.createLesson(payload);
         if (res.data.success) {
-          alert("Lesson created successfully!");
+          toast.success("Lesson created successfully!");
           fetchCourseContent();
           setShowLessonModal(false);
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save lesson");
+      toast.error(err.response?.data?.message || "Failed to save lesson");
     }
   };
 
@@ -217,11 +218,11 @@ export default function AdminCourseContent() {
     try {
       const res = await LessonAPI.deleteLesson(id);
       if (res.data.success) {
-        alert("Lesson deleted successfully!");
+        toast.success("Lesson deleted successfully!");
         fetchCourseContent();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete lesson");
+      toast.error(err.response?.data?.message || "Failed to delete lesson");
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../component/AdminSidebar.jsx";
 import AdminAPI from "../api/adminAPI.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminCategories() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function AdminCategories() {
     }
 
     if (userRole !== "ADMIN" && userRole !== "ROLE_ADMIN") {
-      alert("Access denied! Admin only.");
+      toast.error("Access denied! Admin only.");
       navigate("/home");
       return;
     }
@@ -49,7 +50,7 @@ export default function AdminCategories() {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      alert(err.response?.data?.message || "Failed to load categories");
+      toast.error(err.response?.data?.message || "Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -74,7 +75,7 @@ export default function AdminCategories() {
   const handleSave = async () => {
     try {
       if (!form.code || !form.name) {
-        alert("Code and Name are required!");
+        toast.warning("Code and Name are required!");
         return;
       }
 
@@ -84,20 +85,20 @@ export default function AdminCategories() {
           ...form,
         });
         if (response.data.success) {
-          alert("Category updated successfully!");
+          toast.success("Category updated successfully!");
           fetchCategories();
           setShowModal(false);
         }
       } else {
         const response = await AdminAPI.createCategory(form);
         if (response.data.success) {
-          alert("Category created successfully!");
+          toast.success("Category created successfully!");
           fetchCategories();
           setShowModal(false);
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save category");
+      toast.error(err.response?.data?.message || "Failed to save category");
     }
   };
 
@@ -107,11 +108,11 @@ export default function AdminCategories() {
     try {
       const response = await AdminAPI.deleteCategory(code);
       if (response.data.success) {
-        alert("Category deleted successfully!");
+        toast.success("Category deleted successfully!");
         fetchCategories();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete category");
+      toast.error(err.response?.data?.message || "Failed to delete category");
     }
   };
 

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import LessonAPI from "../api/lessonAPI";
 import CourseAPI from "../api/courseAPI";
+import ProgressAPI from "../api/progressAPI";
+import { jwtDecode } from "jwt-decode";
+import toast from "../utils/toast.js";
 
 const CourseContent = () => {
   const { courseId } = useParams();
@@ -14,10 +17,32 @@ const CourseContent = () => {
   const [loading, setLoading] = useState(true);
   const [expandedChapters, setExpandedChapters] = useState({});
   const [videoProgress, setVideoProgress] = useState(0);
+  const [completedLessons, setCompletedLessons] = useState(new Set());
+  const [userId, setUserId] = useState(null);
+  const videoRef = useRef(null);
+  const progressIntervalRef = useRef(null);
 
   useEffect(() => {
+    // Lấy userId từ token
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.sub);
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
+    
     fetchCourseContent();
     fetchProgress();
+    
+    // Cleanup interval khi component unmount
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
   }, [courseId]);
 
   const fetchCourseContent = async () => {
@@ -102,11 +127,11 @@ const CourseContent = () => {
         }
       } catch (chaptersErr) {
         console.error("Error fetching chapters:", chaptersErr);
-        alert("Failed to load course content. Please try again later.");
+        toast.error("Failed to load course content. Please try again later.");
       }
     } catch (err) {
       console.error("Error fetching course content:", err);
-      alert(err.response?.data?.message || "Failed to load course");
+      toast.error(err.response?.data?.message || "Failed to load course");
     } finally {
       setLoading(false);
     }
@@ -114,10 +139,27 @@ const CourseContent = () => {
 
   const fetchProgress = async () => {
     try {
-      const res = await LessonAPI.getCourseProgress(courseId);
-      if (res.data.success) {
-        setProgress(res.data.data);
+      if (!userId) return;
+      
+      // Lấy progress từ localStorage theo userId
+      const progressKey = `progress_${userId}_${courseId}`;
+      const savedProgress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+      console.log("📊 Saved progress from localStorage:", savedProgress);
+      
+      if (savedProgress.completedLessons) {
+        setCompletedLessons(new Set(savedProgress.completedLessons));
       }
+      
+      // Cập nhật chapters với completion status
+      setChapters(prevChapters => 
+        prevChapters.map(chapter => ({
+          ...chapter,
+          lessons: chapter.lessons.map(lesson => ({
+            ...lesson,
+            isCompleted: savedProgress.completedLessons?.includes(lesson.id || lesson.lessonId) || false
+          }))
+        }))
+      );
     } catch (err) {
       console.error("Error fetching progress:", err);
     }
@@ -126,11 +168,28 @@ const CourseContent = () => {
   const loadLesson = async (lessonId) => {
     try {
       console.log("Loading lesson:", lessonId);
+      
+      // Kiểm tra xem lesson có bị lock không
+      if (!canAccessLesson(lessonId)) {
+        return;
+      }
+      
+      // Clear previous interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+      
       const res = await LessonAPI.getUserLesson(lessonId);
       console.log("Lesson response:", res.data);
       if (res.data.success) {
         setCurrentLesson(res.data.data);
+        setVideoProgress(0); // Reset video progress
         console.log("Current lesson set:", res.data.data);
+        
+        // Bắt đầu simulate progress cho YouTube video sau 2 giây
+        if (res.data.data.videoType === 'YOUTUBE') {
+          setTimeout(startYouTubeProgressSimulation, 2000);
+        }
       }
     } catch (err) {
       console.error("Error loading lesson:", err);
@@ -140,11 +199,16 @@ const CourseContent = () => {
         const lesson = chapter.lessons?.find(l => l.lessonId === lessonId || l.id === lessonId);
         if (lesson) {
           setCurrentLesson(lesson);
+          setVideoProgress(0); // Reset video progress
           console.log("Lesson loaded from chapters data:", lesson);
+          
+          // Bắt đầu simulate progress cho YouTube video
+          if (lesson.videoType === 'YOUTUBE') {
+            setTimeout(startYouTubeProgressSimulation, 2000);
+          }
           return;
         }
       }
-      alert(err.response?.data?.message || "Failed to load lesson");
     }
   };
 
@@ -159,19 +223,44 @@ const CourseContent = () => {
     if (!currentLesson) return;
     
     try {
-      const res = await LessonAPI.markLessonComplete(currentLesson.id);
-      if (res.data.success) {
-        alert("Lesson marked as complete!");
-        fetchProgress();
-        
-        // Tự động chuyển sang lesson tiếp theo
-        const nextLesson = findNextLesson();
-        if (nextLesson) {
-          loadLesson(nextLesson.id);
-        }
+      const lessonId = currentLesson.id || currentLesson.lessonId;
+      
+      // Lưu vào localStorage
+      const savedProgress = JSON.parse(localStorage.getItem(`progress_${courseId}`) || '{}');
+      const completed = new Set(savedProgress.completedLessons || []);
+      completed.add(lessonId);
+      
+      localStorage.setItem(`progress_${courseId}`, JSON.stringify({
+        ...savedProgress,
+        completedLessons: Array.from(completed),
+        lastUpdated: new Date().toISOString()
+      }));
+      
+      setCompletedLessons(completed);
+      
+      // Cập nhật UI
+      setChapters(prevChapters => 
+        prevChapters.map(chapter => ({
+          ...chapter,
+          lessons: chapter.lessons.map(lesson => 
+            (lesson.id === lessonId || lesson.lessonId === lessonId)
+              ? { ...lesson, isCompleted: true }
+              : lesson
+          )
+        }))
+      );
+      
+      console.log("✅ Lesson completed:", lessonId);
+      
+      // Tự động chuyển sang bài tiếp theo
+      const nextLesson = findNextLesson();
+      if (nextLesson) {
+        setTimeout(() => {
+          loadLesson(nextLesson.id || nextLesson.lessonId);
+        }, 1000);
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to mark complete");
+      console.error("❌ Error marking complete:", err);
     }
   };
 
@@ -194,57 +283,61 @@ const CourseContent = () => {
     return null;
   };
 
-  const handleVideoProgress = async (percent) => {
-    setVideoProgress(percent);
-    
+  const handleVideoProgress = (percent) => {
     if (!currentLesson) return;
     
-    // Update progress mỗi 10%
-    if (percent % 10 === 0) {
-      try {
-        await LessonAPI.updateVideoProgress(currentLesson.id, percent);
-      } catch (err) {
-        console.error("Error updating progress:", err);
-      }
-    }
+    setVideoProgress(percent);
     
-    // Auto-complete tại 90%
-    if (percent >= 90 && !isLessonCompleted(currentLesson.id)) {
-      try {
-        // Lấy thông tin lesson tiếp theo
-        const nextRes = await LessonAPI.getNextLesson(currentLesson.id);
-        if (nextRes.data.success) {
-          const nextInfo = nextRes.data.data;
-          
-          if (nextInfo.nextLesson) {
-            // Có lesson tiếp theo
-            if (window.confirm(`Bài học hoàn thành! Tiếp tục với: ${nextInfo.nextLesson.title}?`)) {
-              loadLesson(nextInfo.nextLesson.lessonId);
-            }
-          } else if (nextInfo.requiresQuiz) {
-            alert("Bạn cần hoàn thành Quiz để mở khóa chapter tiếp theo!");
-          } else if (nextInfo.courseCompleted) {
-            alert("🎉 Chúc mừng! Bạn đã hoàn thành khóa học!");
-          }
-          
-          // Refresh progress
-          fetchProgress();
-        }
-      } catch (err) {
-        console.error("Error getting next lesson:", err);
-      }
+    // Auto-complete khi xem hết video (100%)
+    if (percent >= 100 && !isLessonCompleted(currentLesson.id || currentLesson.lessonId)) {
+      setTimeout(() => {
+        handleMarkComplete();
+      }, 500);
     }
   };
 
-  const isLessonCompleted = (lessonId) => {
-    // Kiểm tra trong chapters data
-    for (const chapter of chapters) {
-      const lesson = chapter.lessons?.find(l => l.lessonId === lessonId);
-      if (lesson) {
-        return lesson.isCompleted || false;
+  // Simulate progress cho YouTube videos (vì YouTube iframe không trigger events)
+  const startYouTubeProgressSimulation = () => {
+    // Không cần auto-simulate nữa, user sẽ click "Đã xem xong"
+    console.log("YouTube video loaded - waiting for user to mark as completed");
+  };
+
+  const canAccessLesson = (lessonId) => {
+    // Bài học đầu tiên luôn mở
+    const firstLesson = chapters[0]?.lessons?.[0];
+    if (!firstLesson) return false;
+    if ((firstLesson.id || firstLesson.lessonId) === lessonId) return true;
+    
+    // Kiểm tra bài trước đã complete chưa (phải xem hết 100%)
+    const previousLesson = findPreviousLesson(lessonId);
+    if (!previousLesson) return true; // Không tìm thấy bài trước = cho phép truy cập
+    
+    const isPreviousCompleted = completedLessons.has(previousLesson.id || previousLesson.lessonId);
+    return isPreviousCompleted;
+  };
+
+  const findPreviousLesson = (lessonId) => {
+    for (let i = 0; i < chapters.length; i++) {
+      const lessons = chapters[i].lessons || [];
+      const currentIndex = lessons.findIndex(l => (l.id || l.lessonId) === lessonId);
+      
+      if (currentIndex !== -1) {
+        // Nếu có lesson trước trong cùng chapter
+        if (currentIndex > 0) {
+          return lessons[currentIndex - 1];
+        }
+        // Nếu có chapter trước
+        if (i > 0 && chapters[i - 1].lessons?.length > 0) {
+          const prevChapterLessons = chapters[i - 1].lessons;
+          return prevChapterLessons[prevChapterLessons.length - 1];
+        }
       }
     }
-    return false;
+    return null;
+  };
+
+  const isLessonCompleted = (lessonId) => {
+    return completedLessons.has(lessonId);
   };
 
   if (loading) {
@@ -273,15 +366,18 @@ const CourseContent = () => {
           {progress && (
             <div className="mt-2">
               <div className="flex justify-between text-white text-sm mb-1">
-                <span>Progress</span>
-                <span>{progress.progressPercent || 0}%</span>
+                <span>Tiến độ</span>
+                <span>{Math.round((completedLessons.size / getTotalLessons()) * 100)}%</span>
               </div>
               <div className="w-full bg-white/30 rounded-full h-2">
                 <div
                   className="bg-white h-2 rounded-full transition-all"
-                  style={{ width: `${progress.progressPercent || 0}%` }}
+                  style={{ width: `${Math.round((completedLessons.size / getTotalLessons()) * 100)}%` }}
                 ></div>
               </div>
+              <p className="text-white/80 text-xs mt-1">
+                {completedLessons.size}/{getTotalLessons()} bài học
+              </p>
             </div>
           )}
         </div>
@@ -313,25 +409,38 @@ const CourseContent = () => {
 
               {expandedChapters[chapter.chapterId] && (
                 <div className="ml-4 mt-1 space-y-1">
-                  {chapter.lessons?.map((lesson, lessonIdx) => (
-                    <button
-                      key={lesson.lessonId}
-                      onClick={() => loadLesson(lesson.lessonId)}
-                      className={`w-full text-left p-2 rounded flex items-center gap-2 ${
-                        currentLesson?.id === lesson.lessonId
-                          ? "bg-purple-100 text-purple-700 font-semibold"
-                          : "hover:bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {lesson.isCompleted ? (
-                        <span className="text-green-500">✓</span>
-                      ) : (
-                        <span className="text-gray-400">{lessonIdx + 1}</span>
-                      )}
-                      <span className="flex-1 text-sm">{lesson.title}</span>
-                      <span className="text-xs text-gray-500">{lesson.duration || ""}min</span>
-                    </button>
-                  ))}
+                  {chapter.lessons?.map((lesson, lessonIdx) => {
+                    const isCompleted = isLessonCompleted(lesson.id || lesson.lessonId);
+                    const isLocked = !canAccessLesson(lesson.id || lesson.lessonId);
+                    const isCurrent = currentLesson?.id === (lesson.id || lesson.lessonId);
+                    
+                    return (
+                      <button
+                        key={lesson.lessonId}
+                        onClick={() => loadLesson(lesson.id || lesson.lessonId)}
+                        disabled={isLocked}
+                        className={`w-full text-left p-2 rounded flex items-center gap-2 transition ${
+                          isCurrent
+                            ? "bg-purple-100 text-purple-700 font-semibold"
+                            : isLocked
+                            ? "opacity-50 cursor-not-allowed hover:bg-gray-50"
+                            : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <span className="text-green-500 text-lg">✓</span>
+                        ) : isLocked ? (
+                          <span className="text-gray-400 text-lg">🔒</span>
+                        ) : (
+                          <span className="text-gray-400">{lessonIdx + 1}</span>
+                        )}
+                        <span className="flex-1 text-sm">{lesson.title}</span>
+                        {lesson.duration && (
+                          <span className="text-xs text-gray-500">{lesson.duration}min</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -346,7 +455,7 @@ const CourseContent = () => {
           <div className="max-w-5xl mx-auto p-6">
             {/* Video Player */}
             {currentLesson.videoUrl && (
-              <div className="bg-black rounded-lg mb-6 aspect-video shadow-xl">
+              <div className="bg-black rounded-lg mb-6 aspect-video shadow-xl relative">
                 {currentLesson.videoType === 'YOUTUBE' ? (
                   <iframe
                     className="w-full h-full rounded-lg"
@@ -358,16 +467,26 @@ const CourseContent = () => {
                   ></iframe>
                 ) : (
                   <video
+                    ref={videoRef}
                     className="w-full h-full rounded-lg"
                     controls
                     src={currentLesson.videoUrl}
                     onTimeUpdate={(e) => {
                       const percent = Math.floor((e.target.currentTime / e.target.duration) * 100);
-                      handleVideoProgress(percent);
+                      if (!isNaN(percent)) {
+                        handleVideoProgress(percent);
+                      }
                     }}
                   >
                     Your browser does not support the video tag.
                   </video>
+                )}
+                
+                {/* Video Progress Indicator */}
+                {isLessonCompleted(currentLesson.id || currentLesson.lessonId) && (
+                  <div className="absolute top-4 right-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                    ✓ Hoàn thành
+                  </div>
                 )}
               </div>
             )}
@@ -378,17 +497,21 @@ const CourseContent = () => {
                 <h1 className="text-3xl font-bold text-gray-800">
                   {currentLesson.title}
                 </h1>
-                <button
-                  onClick={handleMarkComplete}
-                  className={`px-6 py-2 rounded-lg font-semibold ${
-                    isLessonCompleted(currentLesson.id)
-                      ? "bg-green-500 text-white"
-                      : "bg-purple-600 text-white hover:bg-purple-700"
-                  }`}
-                  disabled={isLessonCompleted(currentLesson.id)}
-                >
-                  {isLessonCompleted(currentLesson.id) ? "✓ Completed" : "Mark as Complete"}
-                </button>
+                {!isLessonCompleted(currentLesson.id || currentLesson.lessonId) ? (
+                  <button
+                    onClick={() => {
+                      setVideoProgress(100);
+                      handleVideoProgress(100);
+                    }}
+                    className="px-6 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                  >
+                    Mark as Complete
+                  </button>
+                ) : (
+                  <span className="px-6 py-2 rounded-lg font-semibold bg-green-500 text-white">
+                    ✓ Completed
+                  </span>
+                )}
               </div>
 
               {currentLesson.description && (
@@ -449,6 +572,11 @@ const CourseContent = () => {
       </div>
     </div>
   );
+};
+
+// Helper function
+const getTotalLessons = () => {
+  return chapters.reduce((total, chapter) => total + (chapter.lessons?.length || 0), 0);
 };
 
 export default CourseContent;

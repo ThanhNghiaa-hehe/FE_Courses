@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import UserAPI from "../api/userAPI";
+import toast from "../utils/toast";
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -55,12 +56,12 @@ export default function UserProfile() {
           setCity(userData.address.city || "");
         }
       } else {
-        alert("Không thể tải thông tin người dùng");
+        toast.error("Không thể tải thông tin người dùng");
         navigate("/auth");
       }
     } catch (e) {
       console.error("Error fetching user:", e);
-      alert(e.response?.data?.message || "Phiên đăng nhập hết hạn");
+      toast.error(e.response?.data?.message || "Phiên đăng nhập hết hạn");
       navigate("/auth");
     } finally {
       setLoading(false);
@@ -106,15 +107,15 @@ export default function UserProfile() {
       const res = await UserAPI.updateUser(formData);
 
       if (res.data.success) {
-        alert("Cập nhật thông tin thành công!");
+        toast.success("Cập nhật thông tin thành công!");
         fetchUserProfile(); // Refresh data
         setAvatarFile(null); // Clear file input
       } else {
-        alert(res.data.message || "Cập nhật thất bại");
+        toast.error(res.data.message || "Cập nhật thất bại");
       }
     } catch (e) {
       console.error("Update error:", e);
-      alert(e.response?.data?.message || "Lỗi cập nhật thông tin");
+      toast.error(e.response?.data?.message || "Lỗi cập nhật thông tin");
     } finally {
       setUpdateLoading(false);
     }
@@ -122,12 +123,12 @@ export default function UserProfile() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert("Mật khẩu mới không khớp!");
+      toast.warning("Mật khẩu mới không khớp!");
       return;
     }
 
     if (newPassword.length < 6) {
-      alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+      toast.warning("Mật khẩu mới phải có ít nhất 6 ký tự!");
       return;
     }
 
@@ -140,17 +141,17 @@ export default function UserProfile() {
       });
 
       if (res.data.success) {
-        alert("Đổi mật khẩu thành công!");
+        toast.success("Đổi mật khẩu thành công!");
         // Reset form
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
-        alert(res.data.message || "Đổi mật khẩu thất bại");
+        toast.error(res.data.message || "Đổi mật khẩu thất bại");
       }
     } catch (e) {
       console.error("Change password error:", e);
-      alert(e.response?.data?.message || "Mật khẩu cũ không đúng!");
+      toast.error(e.response?.data?.message || "Mật khẩu cũ không đúng!");
     } finally {
       setUpdateLoading(false);
     }
@@ -167,15 +168,18 @@ export default function UserProfile() {
       const res = await UserAPI.deleteUser(user.id);
 
       if (res.data.success) {
-        alert("Xóa tài khoản thành công!");
-        localStorage.clear();
-        navigate("/auth");
+        toast.success("Xóa tài khoản thành công!");
+        // Khi xóa tài khoản thì xóa hết data là hợp lý
+        setTimeout(() => {
+          localStorage.clear();
+          navigate("/auth");
+        }, 1500);
       } else {
-        alert(res.data.message || "Xóa tài khoản thất bại");
+        toast.error(res.data.message || "Xóa tài khoản thất bại");
       }
     } catch (e) {
       console.error("Delete account error:", e);
-      alert(e.response?.data?.message || "Lỗi xóa tài khoản");
+      toast.error(e.response?.data?.message || "Lỗi xóa tài khoản");
     }
   };
 

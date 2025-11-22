@@ -22,7 +22,10 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
     // Kiểm tra token hết hạn
     if (decoded.exp && decoded.exp < currentTime) {
       console.warn("⚠️ Token expired, clearing and redirecting to /auth");
-      localStorage.clear();
+      // Chỉ xóa token, giữ lại user data
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("userRole");
       return <Navigate to="/auth" replace />;
     }
 
@@ -41,7 +44,10 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
 
   } catch (error) {
     console.error("❌ Invalid token:", error);
-    localStorage.clear();
+    // Chỉ xóa token, giữ lại user data
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userRole");
     return <Navigate to="/auth" replace />;
   }
 }

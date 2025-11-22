@@ -3,8 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import LessonAPI from "../api/lessonAPI.jsx";
+import ProgressAPI from "../api/progressAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import { handleLogout as logout } from "../utils/auth.js";
+import toast from "../utils/toast";
 
 export default function CourseDetail() {
   const { courseId } = useParams();
@@ -79,33 +81,45 @@ export default function CourseDetail() {
   };
 
   const checkEnrollment = () => {
-    const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
-    setIsEnrolled(enrolledCourses.includes(courseId));
+    try {
+      // Chỉ dùng localStorage để check enrollment
+      const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
+      const courseIdStr = String(courseId);
+      const enrolled = enrolledCourses.includes(courseIdStr);
+      console.log("🔍 Check enrollment from localStorage:", courseId, "→", enrolled);
+      setIsEnrolled(enrolled);
+    } catch (err) {
+      console.error("Error checking enrollment:", err);
+      setIsEnrolled(false);
+    }
   };
 
   const handleEnroll = async () => {
     try {
+      console.log("📝 Enrolling course:", courseId);
+      
       // Lưu vào localStorage
       const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
-      if (!enrolledCourses.includes(courseId)) {
-        enrolledCourses.push(courseId);
+      const courseIdStr = String(courseId);
+      if (!enrolledCourses.includes(courseIdStr)) {
+        enrolledCourses.push(courseIdStr);
         localStorage.setItem('enrolledCourses', JSON.stringify(enrolledCourses));
       }
-
-      // Gọi API để khởi tạo progress (nếu backend đã implement)
+      
+      // Gọi backend API để tạo enrollment record (không bắt buộc phải thành công)
       try {
-        await LessonAPI.enrollCourse(courseId);
+        await ProgressAPI.enrollCourse(courseId);
+        console.log("✅ Enrolled on backend successfully");
       } catch (apiErr) {
-        console.warn("Progress API not available yet:", apiErr);
-        // Không báo lỗi nếu API chưa có, vẫn cho phép đăng ký
+        console.warn("⚠️ Backend enrollment failed, but localStorage saved:", apiErr);
       }
       
-      alert("Đăng ký khóa học thành công!");
+      toast.success("Đăng ký khóa học thành công!");
       setIsEnrolled(true);
       navigate(`/course/${courseId}/learn`);
     } catch (err) {
-      console.error("Error enrolling course:", err);
-      alert(err.response?.data?.message || "Failed to enroll");
+      console.error("❌ Error enrolling course:", err);
+      toast.error("Lỗi khi đăng ký khóa học");
     }
   };
 

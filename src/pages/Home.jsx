@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import Sidebar from "../component/Sidebar.jsx";
+import ThemeToggle from "../component/ThemeToggle.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import FavoriteAPI from "../api/favoriteAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import { handleLogout as logout } from "../utils/auth.js";
+import toast from "../utils/toast.js";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -132,7 +134,7 @@ export default function Home() {
 
   const handleToggleFavorite = async (course) => {
     if (!userId) {
-      alert('Vui lòng đăng nhập!');
+      toast.warning('Vui lòng đăng nhập!');
       return;
     }
 
@@ -141,7 +143,7 @@ export default function Home() {
         // Xóa khỏi favorites
         await FavoriteAPI.removeFromFavorite(userId, course.id);
         setFavoriteCourseIds(favoriteCourseIds.filter(id => id !== course.id));
-        alert('Đã xóa khỏi danh sách yêu thích!');
+        toast.success('Đã xóa khỏi danh sách yêu thích!');
       } else {
         // Thêm vào favorites
         const favoriteRequest = {
@@ -159,11 +161,11 @@ export default function Home() {
         };
         await FavoriteAPI.addToFavorite(userId, favoriteRequest);
         setFavoriteCourseIds([...favoriteCourseIds, course.id]);
-        alert('Đã thêm vào danh sách yêu thích!');
+        toast.success('Đã thêm vào danh sách yêu thích!');
       }
     } catch (err) {
       console.error('❌ Error toggling favorite:', err);
-      alert(err.response?.data?.message || 'Có lỗi xảy ra!');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra!');
     }
   };
 
@@ -192,23 +194,27 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950">
+    <div className="flex h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Sidebar */}
       <Sidebar onLogout={handleLogout} />
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         {/* Header */}
-        <header className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-10 backdrop-blur-sm" style={{ 
+          borderBottom: '1px solid var(--border-color)',
+          backgroundColor: 'var(--header-bg)'
+        }}>
           <div className="flex items-center justify-between px-8 py-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-              <p className="text-sm text-gray-400">Welcome back, {user.name}!</p>
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Welcome back, {user.name}!</p>
             </div>
             <div className="flex items-center gap-3">
+              <ThemeToggle />
               <button 
                 onClick={() => navigate("/profile")}
-                className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:text-white"
+                className="rounded-lg bg-gray-200 dark:bg-gray-800 p-2 text-gray-600 dark:text-gray-400 transition hover:text-gray-900 dark:hover:text-white"
                 title="Thông tin cá nhân"
               >
                 <span className="material-symbols-outlined">account_circle</span>
@@ -229,9 +235,14 @@ export default function Home() {
                   placeholder="Tìm kiếm khóa học..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 pl-10 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded-lg px-4 py-2 pl-10 placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                  style={{
+                    border: `1px solid var(--input-border)`,
+                    backgroundColor: 'var(--input-bg)',
+                    color: 'var(--text-primary)'
+                  }}
                 />
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
                   search
                 </span>
               </div>
@@ -240,11 +251,12 @@ export default function Home() {
               <div className="flex gap-2 overflow-x-auto pb-2">
                 <button
                   onClick={() => setSelectedCategory("ALL")}
-                  className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                    selectedCategory === "ALL"
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
-                  }`}
+                  className="whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition"
+                  style={{
+                    backgroundColor: selectedCategory === "ALL" ? '#9333ea' : 'var(--card-bg)',
+                    color: selectedCategory === "ALL" ? '#ffffff' : 'var(--text-secondary)',
+                    border: `1px solid ${selectedCategory === "ALL" ? '#9333ea' : 'var(--card-border)'}`
+                  }}
                 >
                   Tất cả ({courses.length})
                 </button>
@@ -254,11 +266,12 @@ export default function Home() {
                     <button
                       key={category.code}
                       onClick={() => setSelectedCategory(category.code)}
-                      className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
-                        selectedCategory === category.code
-                          ? "bg-purple-600 text-white"
-                          : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
-                      }`}
+                      className="whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition"
+                      style={{
+                        backgroundColor: selectedCategory === category.code ? '#9333ea' : 'var(--card-bg)',
+                        color: selectedCategory === category.code ? '#ffffff' : 'var(--text-secondary)',
+                        border: `1px solid ${selectedCategory === category.code ? '#9333ea' : 'var(--card-border)'}`
+                      }}
                     >
                       {category.name} ({count})
                     </button>
@@ -270,48 +283,48 @@ export default function Home() {
 
           {/* Stats Grid */}
           <section className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 hover:border-purple-500/50 transition">
+            <div className="rounded-xl p-6 hover:border-purple-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-blue-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-blue-500">school</span>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">{courses.length}</h3>
-              <p className="text-sm text-gray-400">Tổng khóa học</p>
+              <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{courses.length}</h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Tổng khóa học</p>
             </div>
 
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 hover:border-green-500/50 transition">
+            <div className="rounded-xl p-6 hover:border-green-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-green-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-green-500">category</span>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">{categories.length}</h3>
-              <p className="text-sm text-gray-400">Danh mục</p>
+              <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{categories.length}</h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Danh mục</p>
             </div>
 
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 hover:border-orange-500/50 transition">
+            <div className="rounded-xl p-6 hover:border-orange-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-orange-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-orange-500">trending_up</span>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">
+              <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {courses.filter((c) => c.level === "Beginner").length}
               </h3>
-              <p className="text-sm text-gray-400">Cơ bản</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Cơ bản</p>
             </div>
 
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 hover:border-purple-500/50 transition">
+            <div className="rounded-xl p-6 hover:border-purple-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-purple-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-purple-500">workspace_premium</span>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">
+              <h3 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {courses.filter((c) => c.level === "Advanced").length}
               </h3>
-              <p className="text-sm text-gray-400">Nâng cao</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Nâng cao</p>
             </div>
           </section>
 
@@ -319,12 +332,12 @@ export default function Home() {
           <section>
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                   {selectedCategory === "ALL"
                     ? "Tất cả khóa học"
                     : categories.find((c) => c.code === selectedCategory)?.name || "Khóa học"}
                 </h2>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {filteredCourses.length} khóa học
                   {searchQuery && ` với từ khóa "${searchQuery}"`}
                 </p>
@@ -336,12 +349,12 @@ export default function Home() {
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-700 border-t-purple-500"></div>
               </div>
             ) : filteredCourses.length === 0 ? (
-              <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-12 text-center">
-                <span className="material-symbols-outlined mb-4 text-6xl text-gray-700">
+              <div className="rounded-xl p-12 text-center" style={{ border: `1px solid var(--card-border)`, backgroundColor: 'var(--card-bg)' }}>
+                <span className="material-symbols-outlined mb-4 text-6xl" style={{ color: 'var(--text-muted)' }}>
                   search_off
                 </span>
-                <h3 className="mb-2 text-xl font-bold text-white">Không tìm thấy khóa học</h3>
-                <p className="mb-6 text-gray-400">
+                <h3 className="mb-2 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Không tìm thấy khóa học</h3>
+                <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
                   {searchQuery
                     ? `Không có khóa học nào phù hợp với "${searchQuery}"`
                     : "Chưa có khóa học trong danh mục này"}
@@ -361,10 +374,11 @@ export default function Home() {
                 {filteredCourses.map((course) => (
                   <div
                     key={course.id}
-                    className="group overflow-hidden rounded-xl border border-gray-800 bg-gray-900 transition hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10"
+                    className="group overflow-hidden rounded-xl transition hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10"
+                    style={{ border: `1px solid var(--card-border)`, backgroundColor: 'var(--card-bg)' }}
                   >
                     {/* Thumbnail */}
-                    <div className="relative aspect-video overflow-hidden bg-gray-800">
+                    <div className="relative aspect-video overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                       {course.thumbnailUrl ? (
                         <img
                           src={getImageUrl(course.thumbnailUrl)}
@@ -413,18 +427,19 @@ export default function Home() {
                     <div className="p-4">
                       <h3
                         onClick={() => navigate(`/course/${course.id}`)}
-                        className="mb-2 line-clamp-2 cursor-pointer font-bold text-white hover:text-purple-400"
+                        className="mb-2 line-clamp-2 cursor-pointer font-bold hover:text-purple-400"
+                        style={{ color: 'var(--text-primary)' }}
                       >
                         {course.title}
                       </h3>
 
-                      <p className="mb-3 line-clamp-2 text-sm text-gray-400">
+                      <p className="mb-3 line-clamp-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                         {course.description || "Khóa học chất lượng cao"}
                       </p>
 
                       {/* Instructor & Rating */}
                       {(course.instructorName || course.rating) && (
-                        <div className="mb-3 flex items-center gap-2 text-xs text-gray-400">
+                        <div className="mb-3 flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                           {course.instructorName && (
                             <span className="flex items-center gap-1">
                               <span className="material-symbols-outlined text-sm">person</span>
@@ -444,7 +459,7 @@ export default function Home() {
                       )}
 
                       {/* Duration & Students */}
-                      <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">
+                      <div className="mb-3 flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                         {course.duration && (
                           <span className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">schedule</span>
@@ -460,14 +475,14 @@ export default function Home() {
                       </div>
 
                       {/* Price */}
-                      <div className="flex items-center justify-between border-t border-gray-800 pt-3">
+                      <div className="flex items-center justify-between pt-3" style={{ borderTop: `1px solid var(--border-color)` }}>
                         <div>
                           {course.discountedPrice ? (
                             <div>
                               <div className="text-lg font-bold text-purple-400">
                                 {course.discountedPrice.toLocaleString("vi-VN")}₫
                               </div>
-                              <div className="text-xs text-gray-500 line-through">
+                              <div className="text-xs line-through" style={{ color: 'var(--text-muted)' }}>
                                 {course.price.toLocaleString("vi-VN")}₫
                               </div>
                             </div>

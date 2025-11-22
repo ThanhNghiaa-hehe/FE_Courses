@@ -1,22 +1,22 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 /* Base page styles */
 body {
-  background-color: #0f1923;
-  color: white;
   font-family: "Space Grotesk", sans-serif;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* Form input styles */
 .form-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  background-color: #1a1a1a;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 0.5rem;
-  color: white;
   outline: none;
   transition: all 0.3s;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .form-input:focus {
@@ -25,5 +25,5 @@ body {
 }
 
 .form-input::placeholder {
-  color: #666;
+  color: var(--text-secondary);
 }

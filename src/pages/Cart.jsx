@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ThemeToggle from "../component/ThemeToggle.jsx";
 import CartAPI from "../api/cartAPI";
 import {jwtDecode} from "jwt-decode";
 import { getImageUrl } from "../config/apiConfig.jsx";
+import toast from "../utils/toast.js";
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -43,7 +45,7 @@ export default function Cart() {
       }
     } catch (err) {
       console.error("Error fetching cart:", err);
-      alert("Không thể tải giỏ hàng");
+      toast.error("Không thể tải giỏ hàng");
     } finally {
       setLoading(false);
     }
@@ -55,23 +57,23 @@ export default function Cart() {
 
       if (res.data.success) {
         await fetchCart(userId);
-        alert("Đã xóa khỏi giỏ hàng");
+        toast.success("Đã xóa khỏi giỏ hàng");
       } else {
-        alert(res.data.message || "Xóa thất bại");
+        toast.error(res.data.message || "Xóa thất bại");
       }
     } catch (err) {
       console.error("Error removing item:", err);
-      alert("Lỗi khi xóa khỏi giỏ hàng");
+      toast.error("Lỗi khi xóa khỏi giỏ hàng");
     }
   };
 
   const handleCheckout = () => {
     if (cartItems.length === 0) {
-      alert("Giỏ hàng trống!");
+      toast.warning("Giỏ hàng trống!");
       return;
     }
     // TODO: Implement checkout logic or payment integration
-    alert("Tính năng thanh toán đang được phát triển!");
+    toast.info("Tính năng thanh toán đang được phát triển!");
   };
 
   if (loading) {
@@ -99,6 +101,7 @@ export default function Cart() {
               {cartItems.length} khóa học
             </p>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 

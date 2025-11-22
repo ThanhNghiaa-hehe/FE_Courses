@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../component/AdminSidebar.jsx";
 import AdminAPI from "../api/adminAPI.jsx";
 import UserAPI from "../api/userAPI.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function AdminUsers() {
     }
 
     if (userRole !== "ADMIN" && userRole !== "ROLE_ADMIN") {
-      alert("Access denied! Admin only.");
+      toast.error("Access denied! Admin only.");
       navigate("/home");
       return;
     }
@@ -49,7 +50,7 @@ export default function AdminUsers() {
       }
     } catch (err) {
       console.error("Error fetching users:", err);
-      alert(err.response?.data?.message || "Failed to load users");
+      toast.error(err.response?.data?.message || "Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -66,11 +67,11 @@ export default function AdminUsers() {
     try {
       const response = await UserAPI.deleteUser(userId);
       if (response.data.success) {
-        alert("User deleted successfully!");
+        toast.success("User deleted successfully!");
         fetchUsers();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete user");
+      toast.error(err.response?.data?.message || "Failed to delete user");
     }
   };
 
@@ -78,12 +79,12 @@ export default function AdminUsers() {
     try {
       const response = await AdminAPI.updateUserActive(userId, !currentStatus);
       if (response.data.success) {
-        alert(`User ${currentStatus ? 'disabled' : 'enabled'} successfully!`);
+        toast.success(`User ${currentStatus ? 'disabled' : 'enabled'} successfully!`);
         fetchUsers();
       }
     } catch (err) {
       console.error("Error toggling user status:", err);
-      alert(err.response?.data?.message || "Failed to update user status");
+      toast.error(err.response?.data?.message || "Failed to update user status");
     }
   };
 
@@ -99,12 +100,12 @@ export default function AdminUsers() {
     console.log("New Role:", newRole);
 
     if (!newRole) {
-      alert("Please select a role!");
+      toast.warning("Please select a role!");
       return;
     }
 
     if (newRole === selectedUser.role) {
-      alert("Role is the same, no changes needed!");
+      toast.info("Role is the same, no changes needed!");
       setShowRoleModal(false);
       return;
     }
@@ -124,23 +125,23 @@ export default function AdminUsers() {
       
       // Backend trả về success = true
       if (response.data && response.data.success) {
-        alert(response.data.message || "Role updated successfully!");
+        toast.success(response.data.message || "Role updated successfully!");
         setShowRoleModal(false);
         fetchUsers();
       } else {
         // Nếu không có success field, check status code
         if (response.status === 200) {
-          alert(response.data.message || "Role updated successfully!");
+          toast.success(response.data.message || "Role updated successfully!");
           setShowRoleModal(false);
           fetchUsers();
         } else {
-          alert(response.data.message || "Failed to update role");
+          toast.error(response.data.message || "Failed to update role");
         }
       }
     } catch (err) {
       console.error("❌ Error changing user role:", err);
       console.error("Error details:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to update role");
+      toast.error(err.response?.data?.message || "Failed to update role");
     }
   };
 

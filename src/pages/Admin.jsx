@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../component/AdminSidebar.jsx";
 import AdminAPI from "../api/adminAPI.jsx";
+import toast from "../utils/toast.js";
 
 export default function AdminCourses() {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ export default function AdminCourses() {
 
     // Kiểm tra role admin - chỉ ADMIN hoặc ROLE_ADMIN mới được truy cập
     if (userRole !== "ADMIN" && userRole !== "ROLE_ADMIN") {
-      alert("Access denied! Admin only.");
+      toast.error("Access denied! Admin only.");
       navigate("/home");
       return;
     }
@@ -73,7 +74,7 @@ export default function AdminCourses() {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      alert(err.response?.data?.message || "Failed to load categories");
+      toast.error(err.response?.data?.message || "Failed to load categories");
     } finally {
       setCategoryLoading(false);
     }
@@ -98,7 +99,7 @@ export default function AdminCourses() {
   const handleSaveCategory = async () => {
     try {
       if (!categoryForm.code || !categoryForm.name) {
-        alert("Please fill in required fields");
+        toast.warning("Please fill in required fields");
         return;
       }
 
@@ -108,20 +109,20 @@ export default function AdminCourses() {
           ...categoryForm,
         });
         if (response.data.success) {
-          alert("Category updated successfully!");
+          toast.success("Category updated successfully!");
           fetchCategories();
           setShowCategoryModal(false);
         }
       } else {
         const response = await AdminAPI.createCategory(categoryForm);
         if (response.data.success) {
-          alert("Category created successfully!");
+          toast.success("Category created successfully!");
           fetchCategories();
           setShowCategoryModal(false);
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save category");
+      toast.error(err.response?.data?.message || "Failed to save category");
     }
   };
 
@@ -131,11 +132,11 @@ export default function AdminCourses() {
     try {
       const response = await AdminAPI.deleteCategory(code);
       if (response.data.success) {
-        alert("Category deleted successfully!");
+        toast.success("Category deleted successfully!");
         fetchCategories();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete category");
+      toast.error(err.response?.data?.message || "Failed to delete category");
     }
   };
 
@@ -150,7 +151,7 @@ export default function AdminCourses() {
       }
     } catch (err) {
       console.error("Error fetching courses:", err);
-      alert(err.response?.data?.message || "Failed to load courses");
+      toast.error(err.response?.data?.message || "Failed to load courses");
     } finally {
       setCourseLoading(false);
     }
@@ -193,7 +194,7 @@ export default function AdminCourses() {
   const handleSaveCourse = async () => {
     try {
       if (!courseForm.categoryCode || !courseForm.title || !courseForm.price || !courseForm.duration) {
-        alert("Please fill in required fields");
+        toast.warning("Please fill in required fields");
         return;
       }
 
@@ -206,11 +207,11 @@ export default function AdminCourses() {
           if (uploadResponse.data.success) {
             thumbnailUrl = uploadResponse.data.data; // URL trả về từ backend
           } else {
-            alert("Failed to upload thumbnail");
+            toast.error("Failed to upload thumbnail");
             return;
           }
         } catch (uploadErr) {
-          alert(uploadErr.response?.data?.message || "Failed to upload thumbnail");
+          toast.error(uploadErr.response?.data?.message || "Failed to upload thumbnail");
           return;
         }
       }
@@ -228,7 +229,7 @@ export default function AdminCourses() {
           ...payload,
         });
         if (response.data.success) {
-          alert("Course updated successfully!");
+          toast.success("Course updated successfully!");
           fetchCourses();
           setShowCourseModal(false);
           setThumbnailFile(null);
@@ -237,7 +238,7 @@ export default function AdminCourses() {
       } else {
         const response = await AdminAPI.createCourse(payload);
         if (response.data.success) {
-          alert("Course created successfully!");
+          toast.success("Course created successfully!");
           fetchCourses();
           setShowCourseModal(false);
           setThumbnailFile(null);
@@ -245,7 +246,7 @@ export default function AdminCourses() {
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save course");
+      toast.error(err.response?.data?.message || "Failed to save course");
     }
   };
 
@@ -255,11 +256,11 @@ export default function AdminCourses() {
     try {
       const response = await AdminAPI.deleteCourse(id);
       if (response.data.success) {
-        alert("Course deleted successfully!");
+        toast.success("Course deleted successfully!");
         fetchCourses();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete course");
+      toast.error(err.response?.data?.message || "Failed to delete course");
     }
   };
 

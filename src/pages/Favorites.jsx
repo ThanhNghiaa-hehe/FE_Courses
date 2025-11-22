@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ThemeToggle from "../component/ThemeToggle.jsx";
 import FavoriteAPI from "../api/favoriteAPI";
 import CartAPI from "../api/cartAPI";
 import {jwtDecode} from "jwt-decode";
 import { getImageUrl } from "../config/apiConfig.jsx";
+import toast from "../utils/toast.js";
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -53,7 +55,7 @@ export default function Favorites() {
     } catch (err) {
       console.error("❌ Error fetching favorites:", err);
       console.error("❌ Error details:", err.response?.data);
-      alert("Không thể tải danh sách yêu thích");
+      toast.error("Không thể tải danh sách yêu thích");
     } finally {
       setLoading(false);
     }
@@ -65,13 +67,13 @@ export default function Favorites() {
 
       if (res.data.success) {
         setFavorites(favorites.filter((item) => item.courseId !== courseId));
-        alert("Đã xóa khỏi danh sách yêu thích");
+        toast.success("Đã xóa khỏi danh sách yêu thích");
       } else {
-        alert(res.data.message || "Xóa thất bại");
+        toast.error(res.data.message || "Xóa thất bại");
       }
     } catch (err) {
       console.error("Error removing favorite:", err);
-      alert("Đồi khi xóa khỏi danh sách yêu thích");
+      toast.error("Đồi khi xóa khỏi danh sách yêu thích");
     }
   };
 
@@ -94,14 +96,14 @@ export default function Favorites() {
       const res = await CartAPI.addToCart(userId, cartItem);
 
       if (res.data.success) {
-        alert("Đã thêm vào giỏ hàng!");
+        toast.success("Đã thêm vào giỏ hàng!");
         navigate("/cart");
       } else {
-        alert(res.data.message || "Thêm vào giỏ hàng thất bại");
+        toast.error(res.data.message || "Thêm vào giỏ hàng thất bại");
       }
     } catch (err) {
       console.error("Error adding to cart:", err);
-      alert(err.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
+      toast.error(err.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
     }
   };
 
@@ -136,6 +138,7 @@ export default function Favorites() {
               {favorites.length} khóa học
             </p>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 
