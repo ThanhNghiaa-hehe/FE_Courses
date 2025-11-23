@@ -23,6 +23,7 @@ const CourseContent = () => {
   const videoRef = useRef(null);
   const progressIntervalRef = useRef(null);
   const saveIntervalRef = useRef(null);
+  const currentLessonIdRef = useRef(null); // Lưu lessonId để dùng trong callbacks
   const playerDivId = "youtube-player-div";
 
   useEffect(() => {
@@ -254,13 +255,21 @@ const CourseContent = () => {
         setCurrentLesson(lessonData);
         setVideoProgress(lessonData.videoProgress || 0);
         
+        // Lưu lessonId vào ref để dùng trong callbacks
+        currentLessonIdRef.current = lessonData.id || lessonData.lessonId;
+        
         console.log("✅ Current lesson set:", lessonData);
         console.log("📊 Saved progress:", lessonData.videoProgress || 0, "%");
+        console.log("🔖 Lesson ID saved to ref:", currentLessonIdRef.current);
         
         // Init YouTube player nếu là YouTube video
-        if (lessonData.videoType === 'YOUTUBE' && lessonData.videoUrl) {
+        if ((lessonData.videoType === 'YOUTUBE' || 
+             lessonData.videoUrl?.includes('youtube.com') || 
+             lessonData.videoUrl?.includes('youtu.be')) && 
+            lessonData.videoUrl) {
           const videoId = getYouTubeVideoId(lessonData.videoUrl);
           if (videoId) {
+            console.log("🎬 Will initialize YouTube player with ID:", videoId);
             setTimeout(() => {
               initYouTubePlayer(videoId, lessonData.videoProgress || 0);
             }, 500);
@@ -279,7 +288,10 @@ const CourseContent = () => {
           setVideoProgress(0);
           console.log("✅ Lesson loaded from chapters data:", lesson);
           
-          if (lesson.videoType === 'YOUTUBE' && lesson.videoUrl) {
+          if ((lesson.videoType === 'YOUTUBE' || 
+               lesson.videoUrl?.includes('youtube.com') || 
+               lesson.videoUrl?.includes('youtu.be')) && 
+              lesson.videoUrl) {
             const videoId = getYouTubeVideoId(lesson.videoUrl);
             if (videoId) {
               setTimeout(() => {
@@ -325,12 +337,33 @@ const CourseContent = () => {
   
   /**
    * Extract YouTube video ID từ URL
+   * Support: youtube.com/watch?v=ID, youtube.com/embed/ID, youtu.be/ID
    */
   const getYouTubeVideoId = (url) => {
     if (!url) return null;
+    
+    console.log("🔍 Extracting YouTube ID from:", url);
+    
+    // Pattern 1: youtube.com/embed/ID
+    if (url.includes('/embed/')) {
+      const embedMatch = url.match(/\/embed\/([^?&#]+)/);
+      if (embedMatch) {
+        console.log("✅ Found YouTube ID (embed):", embedMatch[1]);
+        return embedMatch[1];
+      }
+    }
+    
+    // Pattern 2: youtube.com/watch?v=ID hoặc youtu.be/ID
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regex);
-    return match ? match[1] : null;
+    
+    if (match) {
+      console.log("✅ Found YouTube ID (regex):", match[1]);
+      return match[1];
+    }
+    
+    console.warn("⚠️ Could not extract YouTube ID from:", url);
+    return null;
   };
 
   /**
@@ -358,7 +391,9 @@ const CourseContent = () => {
         'autoplay': 0,
         'controls': 1,
         'modestbranding': 1,
-        'rel': 0
+        'rel': 0,
+        'origin': window.location.origin, // Fix CORS warnings
+        'enablejsapi': 1
       },
       events: {
         'onReady': (event) => onYouTubePlayerReady(event, savedProgress),
@@ -505,17 +540,31 @@ const CourseContent = () => {
    * Mark video complete (100%)
    */
   const markVideoComplete = async () => {
-    if (!currentLesson) return;
-
-    const lessonId = currentLesson.id || currentLesson.lessonId;
+    const lessonId = currentLessonIdRef.current;
     
-    console.log('🏁 Marking video as complete (100%)');
+    if (!lessonId) {
+      console.warn('⚠️ No lesson ID in ref to mark complete');
+      return;
+    }
+    
+    console.log('🏁 Marking video as complete (100%)', {
+      lessonId,
+      currentLesson: currentLesson?.title || 'Unknown'
+    });
 
     try {
-      await ProgressAPI.updateVideoProgress(lessonId, 100);
-      handleLessonCompleted(lessonId);
+      const response = await ProgressAPI.updateVideoProgress(lessonId, 100);
+      console.log('✅ Complete API response:', response.data);
+      
+      if (response.data.success) {
+        handleLessonCompleted(lessonId);
+        toast.success('Đã hoàn thành bài học!');
+      } else {
+        console.error('❌ Backend did not confirm completion');
+      }
     } catch (err) {
       console.error('❌ Error marking complete:', err);
+      toast.error('Không thể đánh dấu hoàn thành');
     }
   };
 
@@ -523,40 +572,28 @@ const CourseContent = () => {
    * Handle khi lesson completed
    */
   const handleLessonCompleted = (lessonId) => {
+    console.log('🎉 Handling lesson completion:', lessonId);
+    
     // Update local state
     const newCompleted = new Set(completedLessons);
     newCompleted.add(lessonId);
     setCompletedLessons(newCompleted);
 
     // Update localStorage
-    if (userId) {
-      const progressKey = `progress_${userId}_${courseId}`;
-      const savedProgress = JSON.parse(localStorage.getItem(progressKey) || '{}');
-      savedProgress.completedLessons = Array.from(newCompleted);
-      localStorage.setItem(progressKey, JSON.stringify(savedProgress));
-    }
+    const storageKey = `completed_${userId}_${courseId}`;
+    const completed = Array.from(newCompleted);
+    localStorage.setItem(storageKey, JSON.stringify(completed));
+    
+    console.log('✅ Updated completed lessons:', completed);
 
-    // Update chapters UI
-    setChapters(prevChapters => 
-      prevChapters.map(chapter => ({
-        ...chapter,
-        lessons: chapter.lessons.map(lesson => 
-          (lesson.id === lessonId || lesson.lessonId === lessonId)
-            ? { ...lesson, isCompleted: true }
-            : lesson
-        )
-      }))
-    );
+    // Refresh progress
+    fetchProgress();
 
-    toast.success('🎉 Hoàn thành bài học!');
-
-    // Auto chuyển bài tiếp theo sau 2s
-    setTimeout(() => {
-      const nextLesson = findNextLesson();
-      if (nextLesson) {
-        loadLesson(nextLesson.id || nextLesson.lessonId);
-      }
-    }, 2000);
+    // Auto navigate to next lesson (optional)
+    // const nextLesson = findNextLesson();
+    // if (nextLesson) {
+    //   setTimeout(() => loadLesson(nextLesson.id), 2000);
+    // }
   };
 
   /**
@@ -742,7 +779,19 @@ const CourseContent = () => {
             {/* Video Player */}
             {currentLesson.videoUrl && (
               <div className="bg-black rounded-lg mb-6 aspect-video shadow-xl relative overflow-hidden">
-                {currentLesson.videoType === 'YOUTUBE' ? (
+                {(() => {
+                  console.log("🎥 Current Lesson Video:", {
+                    videoType: currentLesson.videoType,
+                    videoUrl: currentLesson.videoUrl,
+                    lessonId: currentLesson.id || currentLesson.lessonId
+                  });
+                  return null;
+                })()}
+                
+                {/* Auto-detect YouTube URL nếu videoType null */}
+                {(currentLesson.videoType === 'YOUTUBE' || 
+                  currentLesson.videoUrl.includes('youtube.com') || 
+                  currentLesson.videoUrl.includes('youtu.be')) ? (
                   /* YouTube Player - Sẽ được initialize bởi YouTube iframe API */
                   <div 
                     id={playerDivId}
