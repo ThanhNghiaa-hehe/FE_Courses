@@ -57,12 +57,8 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* Payment Callback Route */}
-        <Route path="/payment/callback" element={
-          <ProtectedRoute>
-            <PaymentCallback />
-          </ProtectedRoute>
-        } />
+        {/* Payment Callback Route - Public route for VNPay callback */}
+        <Route path="/payment/callback" element={<PaymentCallback />} />
         
         {/* Admin Routes - Protected & Require Admin Role */}
         <Route path="/admin/dashboard" element={

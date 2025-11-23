@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán thành công</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .success-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3);
+            margin-bottom: 30px;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .checkmark {
+            width: 50px;
+            height: 50px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+        
+        h1 {
+            color: white;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+        }
+        
+        .response-card {
+            background: #1f2937;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+        
+        .card-header {
+            background: #111827;
+            padding: 20px 30px;
+            border-bottom: 1px solid #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-header svg {
+            width: 24px;
+            height: 24px;
+            stroke: #10b981;
+        }
+        
+        .card-header h2 {
+            color: white;
+            font-size: 20px;
+        }
+        
+        .card-body {
+            padding: 30px;
+        }
+        
+        pre {
+            background: #111827;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 0;
+        }
+        
+        code {
+            color: #10b981;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .button-container {
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(139, 92, 246, 0.6);
+        }
+        
+        .btn-icon {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .container > * {
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        .container > *:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .container > *:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Success Header -->
+        <div class="success-header">
+            <div class="success-icon">
+                <svg class="checkmark" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h1>Thanh toán thành công!</h1>
+            <p class="subtitle" id="coursesInfo">Đã thêm khóa học vào tài khoản của bạn</p>
+        </div>
+
+        <!-- Response JSON Card -->
+        <div class="response-card">
+            <div class="card-header">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h2>Chi tiết giao dịch (Response JSON)</h2>
+            </div>
+            <div class="card-body">
+                <pre><code id="jsonResponse">Loading...</code></pre>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <div class="button-container">
+            <a href="http://localhost:5174/my-courses" class="btn-primary">
+                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Vào My Courses
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Parse response từ URL params (VNPay callback)
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Build response từ VNPay params
+        const responseData = {
+            success: urlParams.get('vnp_ResponseCode') === '00',
+            message: urlParams.get('vnp_ResponseCode') === '00' ? "Thanh toán thành công" : "Thanh toán thất bại",
+            data: {
+                amount: parseInt(urlParams.get('vnp_Amount') || 0) / 100,
+                paymentId: urlParams.get('vnp_TxnRef') || 'N/A',
+                transactionNo: urlParams.get('vnp_TransactionNo') || 'N/A',
+                bankCode: urlParams.get('vnp_BankCode') || 'N/A',
+                payDate: urlParams.get('vnp_PayDate') || 'N/A',
+                orderInfo: decodeURIComponent(urlParams.get('vnp_OrderInfo') || ''),
+                responseCode: urlParams.get('vnp_ResponseCode'),
+                transactionStatus: urlParams.get('vnp_TransactionStatus'),
+                coursesEnrolled: 1, // Backend cần thêm thông tin này
+                status: "success"
+            }
+        };
+        
+        // Display JSON
+        document.getElementById('jsonResponse').textContent = JSON.stringify(responseData, null, 2);
+        
+        // Update courses info
+        if (responseData.data && responseData.data.coursesEnrolled) {
+            document.getElementById('coursesInfo').textContent = 
+                `Đã thêm ${responseData.data.coursesEnrolled} khóa học vào tài khoản của bạn`;
+        }
+        
+        // Format số tiền
+        const amountElement = document.createElement('div');
+        amountElement.innerHTML = `<strong>Số tiền:</strong> ${responseData.data.amount.toLocaleString('vi-VN')} VNĐ`;
+        
+        console.log('Payment Response:', responseData);
+    </script>
+</body>
+</html>

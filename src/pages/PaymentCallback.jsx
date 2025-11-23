@@ -8,6 +8,7 @@ export default function PaymentCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("processing"); // processing, success, failed
   const [message, setMessage] = useState("Đang xử lý thanh toán...");
+  const [paymentResponse, setPaymentResponse] = useState(null); // Lưu response JSON
 
   useEffect(() => {
     handlePaymentCallback();
@@ -37,6 +38,9 @@ export default function PaymentCallback() {
         console.log("✅ Payment successful!");
         setStatus("success");
         setMessage("Thanh toán thành công!");
+        
+        // Lưu toàn bộ response để hiển thị JSON
+        setPaymentResponse(response.data);
 
         // Backend trả về coursesEnrolled (số lượng khóa học đã enroll)
         const coursesEnrolled = response.data.data?.coursesEnrolled || 0;
@@ -44,11 +48,7 @@ export default function PaymentCallback() {
 
         toast.success(`Thanh toán thành công! Đã thêm ${coursesEnrolled} khóa học.`);
 
-        // Chuyển đến My Courses ngay lập tức
-        console.log("🚀 Navigating to /my-courses...");
-        setTimeout(() => {
-          navigate("/my-courses", { replace: true });
-        }, 1500);
+        // KHÔNG tự động chuyển hướng - để user xem thông tin và bấm button
       } else {
         // Thanh toán thất bại hoặc bị hủy
         console.log("❌ Payment failed with code:", vnpResponseCode);
@@ -90,62 +90,89 @@ export default function PaymentCallback() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="text-center p-8 rounded-xl max-w-md w-full" style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-6">
+      <div className="max-w-4xl mx-auto">
         {status === "processing" && (
-          <>
+          <div className="text-center p-12 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700">
             <div className="mb-6 inline-block h-16 w-16 animate-spin rounded-full border-4 border-purple-500/20 border-t-purple-500"></div>
-            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+            <h2 className="text-2xl font-bold mb-2 text-white">
               Đang xử lý thanh toán
             </h2>
-            <p style={{ color: 'var(--text-secondary)' }}>Vui lòng đợi...</p>
-          </>
+            <p className="text-gray-400">Vui lòng đợi...</p>
+          </div>
         )}
 
-        {status === "success" && (
-          <>
-            <div className="mb-6 inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10">
-              <span className="material-symbols-outlined text-5xl text-green-500">check_circle</span>
+        {status === "success" && paymentResponse && (
+          <div className="space-y-6">
+            {/* Success Header */}
+            <div className="text-center p-8 bg-gradient-to-r from-green-600 to-green-700 rounded-2xl shadow-2xl">
+              <div className="mb-4 inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20">
+                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Thanh toán thành công!
+              </h1>
+              <p className="text-green-100 text-lg">
+                Đã thêm {paymentResponse.data?.coursesEnrolled || 0} khóa học vào tài khoản của bạn
+              </p>
             </div>
-            <h2 className="text-2xl font-bold mb-2 text-green-500">
-              Thanh toán thành công!
-            </h2>
-            <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Bạn đã được thêm vào khóa học.
-            </p>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-              Đang chuyển đến My Courses...
-            </p>
-            <button
-              onClick={() => navigate("/my-courses")}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-            >
-              Đi đến My Courses ngay
-            </button>
-          </>
+
+            {/* JSON Response Display */}
+            <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+              <div className="bg-gray-900 px-6 py-4 border-b border-gray-700">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Chi tiết giao dịch (Response JSON)
+                </h2>
+              </div>
+              <div className="p-6">
+                <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm">
+                  <code className="text-green-400 font-mono">
+                    {JSON.stringify(paymentResponse, null, 2)}
+                  </code>
+                </pre>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => navigate("/my-courses", { replace: true })}
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-lg font-bold rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-3"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Vào My Courses
+              </button>
+            </div>
+          </div>
         )}
 
         {status === "failed" && (
-          <>
-            <div className="mb-6 inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/10">
-              <span className="material-symbols-outlined text-5xl text-red-500">cancel</span>
+          <div className="text-center p-12 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700">
+            <div className="mb-6 inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-500/20">
+              <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
-            <h2 className="text-2xl font-bold mb-2 text-red-500">
+            <h2 className="text-3xl font-bold mb-4 text-red-500">
               Thanh toán không thành công
             </h2>
-            <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+            <p className="mb-6 text-gray-300 text-lg">
               {message}
             </p>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-              Đang chuyển về trang chủ...
-            </p>
             <button
-              onClick={() => navigate("/home")}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              onClick={() => navigate("/home", { replace: true })}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg"
             >
-              Quay lại ngay
+              Quay lại trang chủ
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
