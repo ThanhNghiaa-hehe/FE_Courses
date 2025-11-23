@@ -33,7 +33,7 @@ const UserAPI = {
    * @param {string} id - User ID
    */
   deleteUser: (id) => {
-    return axiosInstance.get(`/users/delete/${id}`);
+    return axiosInstance.delete(`/users/${id}`);
   },
 };
 

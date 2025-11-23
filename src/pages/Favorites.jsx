@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../component/ThemeToggle.jsx";
 import FavoriteAPI from "../api/favoriteAPI";
-import CartAPI from "../api/cartAPI";
 import {jwtDecode} from "jwt-decode";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import toast from "../utils/toast.js";
@@ -74,36 +73,6 @@ export default function Favorites() {
     } catch (err) {
       console.error("Error removing favorite:", err);
       toast.error("Đồi khi xóa khỏi danh sách yêu thích");
-    }
-  };
-
-  const handleAddToCart = async (course) => {
-    try {
-      const cartItem = {
-        courseId: course.courseId,
-        title: course.title,
-        thumbnailUrl: course.thumbnailUrl,
-        price: course.price,
-        discountedPrice: course.discountedPrice,
-        discountPercent: course.discountPercent,
-        level: course.level,
-        duration: course.duration,
-        instructorName: course.instructorName,
-        rating: course.rating,
-        totalStudents: course.totalStudents,
-      };
-
-      const res = await CartAPI.addToCart(userId, cartItem);
-
-      if (res.data.success) {
-        toast.success("Đã thêm vào giỏ hàng!");
-        navigate("/cart");
-      } else {
-        toast.error(res.data.message || "Thêm vào giỏ hàng thất bại");
-      }
-    } catch (err) {
-      console.error("Error adding to cart:", err);
-      toast.error(err.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
     }
   };
 
@@ -251,17 +220,17 @@ export default function Favorites() {
                   {/* Actions */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleAddToCart(course)}
+                      onClick={() => handleViewCourse(course.courseId)}
                       className="flex-1 px-4 py-2 bg-primary hover:bg-primary/80 rounded-lg font-medium"
                     >
-                      Thêm vào giỏ
+                      Xem chi tiết
                     </button>
                     <button
-                      onClick={() => handleViewCourse(course.courseId)}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
-                      title="Xem chi tiết"
+                      onClick={() => handleRemove(course.courseId)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg"
+                      title="Xóa khỏi yêu thích"
                     >
-                      👁️
+                      <span className="material-symbols-outlined">delete</span>
                     </button>
                   </div>
                 </div>

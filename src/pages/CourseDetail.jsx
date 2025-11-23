@@ -4,6 +4,7 @@ import Sidebar from "../component/Sidebar.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
 import LessonAPI from "../api/lessonAPI.jsx";
 import ProgressAPI from "../api/progressAPI.jsx";
+import PaymentAPI from "../api/paymentAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import { handleLogout as logout } from "../utils/auth.js";
 import toast from "../utils/toast";
@@ -94,32 +95,44 @@ export default function CourseDetail() {
     }
   };
 
-  const handleEnroll = async () => {
+  const handlePayment = async () => {
     try {
-      console.log("📝 Enrolling course:", courseId);
+      console.log("💳 Starting payment for course:", courseId, course);
       
-      // Lưu vào localStorage
-      const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
-      const courseIdStr = String(courseId);
-      if (!enrolledCourses.includes(courseIdStr)) {
-        enrolledCourses.push(courseIdStr);
-        localStorage.setItem('enrolledCourses', JSON.stringify(enrolledCourses));
+      if (!course || !course.price) {
+        toast.error("Không thể lấy thông tin khóa học!");
+        return;
       }
       
-      // Gọi backend API để tạo enrollment record (không bắt buộc phải thành công)
-      try {
-        await ProgressAPI.enrollCourse(courseId);
-        console.log("✅ Enrolled on backend successfully");
-      } catch (apiErr) {
-        console.warn("⚠️ Backend enrollment failed, but localStorage saved:", apiErr);
-      }
+      // ✅ Backend mới expect: { courseIds: string[], orderInfo: string }
+      const paymentData = {
+        courseIds: [courseId],  // ✅ Gửi array thay vì string
+        orderInfo: `Thanh toan khoa hoc ${course.title}`
+      };
       
-      toast.success("Đăng ký khóa học thành công!");
-      setIsEnrolled(true);
-      navigate(`/course/${courseId}/learn`);
+      console.log("💳 Payment data:", paymentData);
+      
+      toast.info("Đang chuyển đến cổng thanh toán...");
+      
+      // Gọi API tạo thanh toán VNPay
+      const response = await PaymentAPI.createVNPayPayment(paymentData);
+      
+      console.log("💳 Payment response:", response.data);
+      
+      if (response.data.success && response.data.data.paymentUrl) {
+        // Chuyển hướng đến trang thanh toán VNPay
+        window.location.href = response.data.data.paymentUrl;
+      } else {
+        toast.error("Không thể tạo thanh toán. Vui lòng thử lại!");
+      }
     } catch (err) {
-      console.error("❌ Error enrolling course:", err);
-      toast.error("Lỗi khi đăng ký khóa học");
+      console.error("❌ Error creating payment:", err);
+      console.error("❌ Error details:", err.response?.data);
+      
+      const errorMsg = err.response?.data?.message || 
+                      err.response?.data?.error || 
+                      "Lỗi khi tạo thanh toán";
+      toast.error(errorMsg);
     }
   };
 
@@ -255,10 +268,10 @@ export default function CourseDetail() {
                       </button>
                     ) : (
                       <button
-                        onClick={handleEnroll}
+                        onClick={handlePayment}
                         className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold text-white transition hover:shadow-lg"
                       >
-                        Đăng ký ngay
+                        Thanh toán ngay
                       </button>
                     )}
                   </div>

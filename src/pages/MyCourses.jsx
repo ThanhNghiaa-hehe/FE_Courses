@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../component/Sidebar.jsx";
 import ThemeToggle from "../component/ThemeToggle.jsx";
 import CourseAPI from "../api/courseAPI.jsx";
+import ProgressAPI from "../api/progressAPI.jsx";
 import { getImageUrl } from "../config/apiConfig.jsx";
 import { handleLogout as logout } from "../utils/auth.js";
+import toast from "../utils/toast";
 
 export default function MyCourses() {
   const navigate = useNavigate();
@@ -28,43 +30,114 @@ export default function MyCourses() {
       setLoading(true);
       setError(null);
       
-      // Lấy danh sách courseId đã đăng ký từ localStorage
-      const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
-      console.log('📚 Enrolled course IDs from localStorage:', enrolledCourses);
+      console.log('📚 Fetching my courses from backend...');
       
-      if (enrolledCourses.length === 0) {
-        setCourses([]);
-        setLoading(false);
-        return;
-      }
+      // Gọi API backend để lấy danh sách khóa học đã đăng ký
+      const response = await ProgressAPI.getMyCourses();
       
-      // Lấy thông tin chi tiết từng khóa học
-      const coursePromises = enrolledCourses.map(async (courseId) => {
-        try {
-          const res = await CourseAPI.getCourseById(courseId);
-          if (res.data.success) {
-            return {
-              ...res.data.data,
-              progressPercentage: 0,
-              completedLessons: 0,
-              totalLessons: 0
-            };
-          }
-          return null;
-        } catch (err) {
-          console.error(`Error fetching course ${courseId}:`, err);
-          return null;
+      console.log('📚 Raw API Response:', response);
+      console.log('📚 API Response.data:', response.data);
+      console.log('📚 API Success:', response.data.success);
+      console.log('📚 API Data:', response.data.data);
+      
+      if (response.data.success) {
+        const enrolledCourses = response.data.data || [];
+        console.log('✅ My courses count:', enrolledCourses.length);
+        
+        // Log chi tiết từng khóa học
+        enrolledCourses.forEach((course, idx) => {
+          console.log(`  Course ${idx + 1}:`, {
+            id: course.id || course.courseId,
+            title: course.title || course.courseTitle,
+            totalLessons: course.totalLessons,
+            completedLessons: course.completedLessons,
+            progressPercent: course.progressPercent
+          });
+        });
+        
+        // Nếu backend chỉ trả về progress data (courseId, courseTitle, etc.)
+        // thì cần fetch thêm thông tin chi tiết từ CourseAPI
+        if (enrolledCourses.length > 0 && !enrolledCourses[0].description) {
+          console.log('⚠️ Backend only returns progress data, fetching full course details...');
+          
+          const fullCoursesPromises = enrolledCourses.map(async (progressData) => {
+            try {
+              const courseId = progressData.courseId || progressData.id;
+              const courseRes = await CourseAPI.getCourseById(courseId);
+              
+              if (courseRes.data.success) {
+                return {
+                  ...courseRes.data.data, // Full course info
+                  progressPercent: progressData.progressPercent || 0,
+                  completedLessons: progressData.completedLessons || 0,
+                  totalLessons: progressData.totalLessons || 0,
+                  lastAccessedAt: progressData.lastAccessedAt
+                };
+              }
+              return null;
+            } catch (err) {
+              console.error(`❌ Error fetching course details for ${progressData.courseId}:`, err);
+              return null;
+            }
+          });
+          
+          const fullCourses = await Promise.all(fullCoursesPromises);
+          const validCourses = fullCourses.filter(c => c !== null);
+          
+          console.log('✅ Full courses with details:', validCourses);
+          setCourses(validCourses);
+        } else {
+          // Backend đã trả về full course data
+          setCourses(enrolledCourses);
         }
-      });
-      
-      const coursesData = await Promise.all(coursePromises);
-      const validCourses = coursesData.filter(course => course !== null);
-      
-      console.log('✅ My courses count:', validCourses.length);
-      setCourses(validCourses);
+        
+        // Cập nhật localStorage để đồng bộ (backup)
+        const courseIds = enrolledCourses.map(course => course.courseId || course.id);
+        console.log('💾 Saving to localStorage:', courseIds);
+        localStorage.setItem('enrolledCourses', JSON.stringify(courseIds));
+      } else {
+        console.warn('⚠️ API returned success=false');
+        setCourses([]);
+      }
     } catch (err) {
       console.error("❌ Error fetching my courses:", err);
-      setError("Failed to load enrolled courses");
+      console.error("❌ Error details:", err.response?.data);
+      
+      // Fallback: thử dùng localStorage nếu API fail
+      console.log('⚠️ Falling back to localStorage...');
+      try {
+        const enrolledCourses = JSON.parse(localStorage.getItem('enrolledCourses') || '[]');
+        if (enrolledCourses.length > 0) {
+          // Lấy thông tin chi tiết từng khóa học
+          const coursePromises = enrolledCourses.map(async (courseId) => {
+            try {
+              const res = await CourseAPI.getCourseById(courseId);
+              if (res.data.success) {
+                return {
+                  ...res.data.data,
+                  progressPercentage: 0,
+                  completedLessons: 0,
+                  totalLessons: 0
+                };
+              }
+              return null;
+            } catch (err) {
+              console.error(`Error fetching course ${courseId}:`, err);
+              return null;
+            }
+          });
+          
+          const coursesData = await Promise.all(coursePromises);
+          const validCourses = coursesData.filter(course => course !== null);
+          setCourses(validCourses);
+        } else {
+          setCourses([]);
+        }
+      } catch (fallbackErr) {
+        console.error('❌ Fallback also failed:', fallbackErr);
+        setError("Không thể tải danh sách khóa học");
+        toast.error("Không thể tải danh sách khóa học");
+      }
     } finally {
       setLoading(false);
     }

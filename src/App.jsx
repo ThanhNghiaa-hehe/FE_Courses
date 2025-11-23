@@ -8,7 +8,7 @@ import CourseDetail from "./pages/CourseDetail.jsx";
 import CourseContent from "./pages/CourseContent.jsx";
 import UserProfile from "./pages/UserProfile.jsx";
 import Favorites from "./pages/Favorites.jsx";
-import Cart from "./pages/Cart.jsx";
+import PaymentCallback from "./pages/PaymentCallback.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminCourses from "./pages/Admin.jsx";
 import AdminCourseContent from "./pages/AdminCourseContent.jsx";
@@ -17,6 +17,7 @@ import AdminUsers from "./pages/AdminUsers.jsx";
 import AuthModal from "./component/AuthModal.jsx";
 
 function App() {
+
   return (
     <BrowserRouter>
       <Routes>
@@ -55,9 +56,11 @@ function App() {
             <Favorites />
           </ProtectedRoute>
         } />
-        <Route path="/cart" element={
+        
+        {/* Payment Callback Route */}
+        <Route path="/payment/callback" element={
           <ProtectedRoute>
-            <Cart />
+            <PaymentCallback />
           </ProtectedRoute>
         } />
         
