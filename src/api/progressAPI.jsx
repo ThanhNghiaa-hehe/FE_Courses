@@ -50,6 +50,14 @@ const ProgressAPI = {
   },
 
   /**
+   * 🔄 Lấy tiến độ đã lưu của video (resume)
+   * GET /api/lessons/{lessonId}/progress
+   */
+  getLessonProgress: (lessonId) => {
+    return axiosInstance.get(`/lessons/${lessonId}/progress`);
+  },
+
+  /**
    * ➡️ Lấy lesson tiếp theo
    * GET /api/lessons/{lessonId}/next
    */

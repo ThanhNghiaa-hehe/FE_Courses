@@ -147,11 +147,11 @@ const LessonAPI = {
 
   /**
    * 📊 Cập nhật tiến độ video
-   * @param {string} id - Lesson ID
+   * @param {string} lessonId - Lesson ID
    * @param {number} percent - Phần trăm đã xem (0-100)
    */
-  updateVideoProgress: (id, percent) => {
-    return axiosInstance.post(`/lessons/${id}/progress`, null, {
+  updateVideoProgress: (lessonId, percent) => {
+    return axiosInstance.post(`/lessons/${lessonId}/progress`, null, {
       params: { percent }
     });
   },
@@ -197,17 +197,6 @@ const LessonAPI = {
    */
   enrollCourse: (courseId) => {
     return axiosInstance.post(`/progress/enroll/${courseId}`);
-  },
-
-  /**
-   * 📊 Cập nhật tiến độ video (API chuẩn)
-   * @param {string} lessonId - Lesson ID
-   * @param {number} percent - Phần trăm đã xem (0-100)
-   */
-  updateVideoProgress: (lessonId, percent) => {
-    return axiosInstance.post(`/lessons/${lessonId}/progress`, null, {
-      params: { percent }
-    });
   },
 
   /**
