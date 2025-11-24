@@ -17,6 +17,16 @@ const CourseAPI = {
   getCourseById: (id) => {
     return axiosInstance.get(`/courses/${id}`);
   },
+
+  /**
+   * 📚 Lấy toàn bộ nội dung khóa học (course + chapters + lessons)
+   * GET /api/courses/{courseId}/content
+   * @param {string} courseId - Course ID
+   * @returns {Object} { course, chapters: [{ chapter, lessons: [...] }] }
+   */
+  getCourseContent: (courseId) => {
+    return axiosInstance.get(`/courses/${courseId}/content`);
+  },
 };
 
 export default CourseAPI;

@@ -78,8 +78,8 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* Payment Callback Route */}
-        <Route path="/payment/callback" element={
+        {/* Payment Result Route - VNPay redirects here */}
+        <Route path="/payment/result" element={
           <ProtectedRoute>
             <PaymentCallback />
           </ProtectedRoute>

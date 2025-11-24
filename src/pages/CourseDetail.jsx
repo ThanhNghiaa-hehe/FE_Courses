@@ -120,8 +120,9 @@ export default function CourseDetail() {
       console.log("💳 Payment response:", response.data);
       
       if (response.data.success && response.data.data.paymentUrl) {
-        // Chuyển hướng đến trang thanh toán VNPay (tại trang hiện tại)
-        window.location.href = response.data.data.paymentUrl;
+        // Mở trang thanh toán VNPay trong tab mới
+        window.open(response.data.data.paymentUrl, '_blank');
+        toast.success("Đã mở cổng thanh toán trong tab mới!");
       } else {
         toast.error("Không thể tạo thanh toán. Vui lòng thử lại!");
       }

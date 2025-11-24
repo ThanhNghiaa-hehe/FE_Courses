@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import LessonAPI from "../api/lessonAPI";
 import CourseAPI from "../api/courseAPI";
 import ProgressAPI from "../api/progressAPI";
@@ -10,6 +10,7 @@ import toast from "../utils/toast.js";
 const CourseContent = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [course, setCourse] = useState(null);
   const [chapters, setChapters] = useState([]);
@@ -23,10 +24,12 @@ const CourseContent = () => {
   const [youtubePlayer, setYoutubePlayer] = useState(null);
   const [chapterQuizzes, setChapterQuizzes] = useState({});
   const [quizPassStatus, setQuizPassStatus] = useState({});
+  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
   const videoRef = useRef(null);
   const progressIntervalRef = useRef(null);
   const saveIntervalRef = useRef(null);
   const currentLessonIdRef = useRef(null); // Lưu lessonId để dùng trong callbacks
+  const youtubePlayerDivRef = useRef(null); // Ref cho YouTube player div
   const playerDivId = "youtube-player-div";
 
   useEffect(() => {
@@ -158,8 +161,16 @@ const CourseContent = () => {
           // Load the lesson user was on, or first incomplete lesson, or first lesson
           let lessonToLoad = null;
           
+          // Check if auto-loading from navigation state (e.g., from quiz result)
+          const autoLoadLessonId = location.state?.autoLoadLesson;
+          if (autoLoadLessonId) {
+            lessonToLoad = autoLoadLessonId;
+            console.log("🎯 Auto-loading lesson from navigation:", lessonToLoad);
+            // Clear state to prevent re-loading on refresh
+            navigate(location.pathname, { replace: true, state: {} });
+          }
           // Try to load current lesson from progress
-          if (progressResult?.currentLessonId) {
+          else if (progressResult?.currentLessonId) {
             lessonToLoad = progressResult.currentLessonId;
             console.log("📍 Loading current lesson from progress:", lessonToLoad);
           }
@@ -598,19 +609,57 @@ const CourseContent = () => {
       // Dừng tracking video cũ
       stopProgressTracking();
       
-      // Kiểm tra xem lesson có bị lock không
-      if (!canAccessLesson(lessonId)) {
-        toast.error('Bạn cần hoàn thành bài trước để mở bài này!');
-        return;
+      // Cleanup YouTube player cũ và force clear div
+      if (youtubePlayer) {
+        console.log("🧹 Destroying old YouTube player");
+        try {
+          youtubePlayer.destroy();
+        } catch (e) {
+          console.warn("Error destroying player:", e);
+        }
+        setYoutubePlayer(null);
       }
+      
+      // Move player div out of container and clear it
+      const playerDiv = youtubePlayerDivRef.current;
+      if (playerDiv) {
+        console.log("🧹 Resetting player div position and clearing");
+        // Move back to root if in container
+        const container = document.getElementById('youtube-player-container');
+        if (container && playerDiv.parentNode === container) {
+          document.body.appendChild(playerDiv);
+        }
+        // Reset to hidden position
+        playerDiv.style.position = 'fixed';
+        playerDiv.style.top = '-9999px';
+        playerDiv.style.left = '-9999px';
+        playerDiv.style.width = '640px';
+        playerDiv.style.height = '360px';
+        playerDiv.style.zIndex = '-1';
+        // Clear content
+        playerDiv.innerHTML = '';
+      }
+      
+      // Cleanup HTML5 video cũ
+      if (videoRef.current) {
+        console.log("🧹 Cleaning up HTML5 video");
+        videoRef.current.pause();
+        videoRef.current.src = "";
+        videoRef.current.load();
+      }
+      
+      // Reset states
+      setIsYouTubeVideo(false);
+      setVideoProgress(0);
+      
+      // Đợi cleanup hoàn tất
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const res = await LessonAPI.getUserLesson(lessonId);
       console.log("Lesson response:", res.data);
       
       if (res.data.success) {
         const lessonData = res.data.data;
-        setCurrentLesson(lessonData);
-        setVideoProgress(lessonData.videoProgress || 0);
         
         // Lưu lessonId vào ref để dùng trong callbacks
         currentLessonIdRef.current = lessonData.id || lessonData.lessonId;
@@ -619,19 +668,33 @@ const CourseContent = () => {
         console.log("📊 Saved progress:", lessonData.videoProgress || 0, "%");
         console.log("🔖 Lesson ID saved to ref:", currentLessonIdRef.current);
         
+        // Check if YouTube video
+        const isYT = lessonData.videoType === 'YOUTUBE' || 
+                     lessonData.videoUrl?.includes('youtube.com') || 
+                     lessonData.videoUrl?.includes('youtu.be');
+        
+        console.log("🎬 Video type detected - isYouTube:", isYT);
+        
+        // Set lesson data
+        setCurrentLesson(lessonData);
+        setVideoProgress(lessonData.videoProgress || 0);
+        
+        // Set isYouTubeVideo để render đúng component
+        setIsYouTubeVideo(isYT);
+        
         // Init YouTube player nếu là YouTube video
-        if ((lessonData.videoType === 'YOUTUBE' || 
-             lessonData.videoUrl?.includes('youtube.com') || 
-             lessonData.videoUrl?.includes('youtu.be')) && 
-            lessonData.videoUrl) {
+        if (isYT && lessonData.videoUrl) {
           const videoId = getYouTubeVideoId(lessonData.videoUrl);
           if (videoId) {
-            console.log("🎬 Will initialize YouTube player with ID:", videoId);
+            console.log("🎥 Will init YouTube player with ID:", videoId);
+            // Đợi DOM render
             setTimeout(() => {
               initYouTubePlayer(videoId, lessonData.videoProgress || 0);
             }, 500);
           }
         }
+        
+        console.log("✅ Video loaded, type:", isYT ? 'YouTube' : 'HTML5');
       }
     } catch (err) {
       console.error("❌ Error loading lesson:", err);
@@ -643,12 +706,14 @@ const CourseContent = () => {
         if (lesson) {
           setCurrentLesson(lesson);
           setVideoProgress(0);
-          console.log("✅ Lesson loaded from chapters data:", lesson);
           
-          if ((lesson.videoType === 'YOUTUBE' || 
-               lesson.videoUrl?.includes('youtube.com') || 
-               lesson.videoUrl?.includes('youtu.be')) && 
-              lesson.videoUrl) {
+          const isYT = lesson.videoType === 'YOUTUBE' || 
+                       lesson.videoUrl?.includes('youtube.com') || 
+                       lesson.videoUrl?.includes('youtu.be');
+          setIsYouTubeVideo(isYT);
+          
+          // Init YouTube player if needed
+          if (isYT && lesson.videoUrl) {
             const videoId = getYouTubeVideoId(lesson.videoUrl);
             if (videoId) {
               setTimeout(() => {
@@ -656,6 +721,8 @@ const CourseContent = () => {
               }, 500);
             }
           }
+          
+          console.log("✅ Lesson loaded from chapters data:", lesson);
           return;
         }
       }
@@ -733,12 +800,35 @@ const CourseContent = () => {
       return;
     }
 
-    // Destroy player cũ nếu có
-    if (youtubePlayer) {
-      youtubePlayer.destroy();
+    // Wait for container to be ready
+    const container = document.getElementById('youtube-player-container');
+    if (!container) {
+      console.warn('⚠️ Container not ready, retrying...');
+      setTimeout(() => initYouTubePlayer(videoId, savedProgress), 200);
+      return;
     }
 
+    // Use ref to get player div
+    const playerDiv = youtubePlayerDivRef.current;
+    if (!playerDiv) {
+      console.error('❌ Player div ref not found!');
+      return;
+    }
+    
     console.log('🎬 Initializing YouTube Player:', videoId);
+    console.log('📦 Container ready, moving player div first');
+    
+    // Move player div to container BEFORE creating player
+    playerDiv.style.position = 'relative';
+    playerDiv.style.top = '0';
+    playerDiv.style.left = '0';
+    playerDiv.style.width = '100%';
+    playerDiv.style.height = '100%';
+    playerDiv.style.zIndex = '1';
+    playerDiv.innerHTML = '';
+    container.appendChild(playerDiv);
+    
+    console.log('📦 Creating YouTube player...');
 
     const player = new window.YT.Player(playerDivId, {
       height: '100%',
@@ -749,7 +839,7 @@ const CourseContent = () => {
         'controls': 1,
         'modestbranding': 1,
         'rel': 0,
-        'origin': window.location.origin, // Fix CORS warnings
+        'origin': window.location.origin,
         'enablejsapi': 1
       },
       events: {
@@ -790,7 +880,7 @@ const CourseContent = () => {
       stopProgressTracking();
       saveVideoProgressToBackend(); // Save ngay khi pause
     } else if (state === window.YT.PlayerState.ENDED) {
-      console.log('⏹️ Video ended');
+      console.log('🎬 Video ENDED - will mark complete and check quiz');
       stopProgressTracking();
       markVideoComplete(); // Auto-complete khi xem hết
     }
@@ -950,33 +1040,25 @@ const CourseContent = () => {
     // Refresh chapters unlock status from backend
     await refreshChaptersUnlockStatus();
 
-    // Check if lesson has quiz
+    // Check if lesson has quiz and auto-navigate
     try {
       const quizResponse = await QuizAPI.getQuizByLesson(lessonId);
       if (quizResponse.data.success && quizResponse.data.data) {
         const quiz = quizResponse.data.data;
-        console.log('📝 Lesson has quiz:', quiz);
+        console.log('📝 Lesson has quiz, navigating to quiz:', quiz);
         
-        // Check if user already passed this quiz
-        const passedResponse = await QuizAPI.hasPassedQuiz(quiz.id);
-        if (passedResponse.data.data === true) {
-          console.log('✅ Quiz already passed, moving to next lesson');
-          toast.success('Bài học hoàn thành! Bạn đã pass quiz này rồi.');
-          return;
-        } else {
-          // Navigate to quiz page
-          toast.success('Bài học hoàn thành! Chuyển sang phần quiz...');
-          setTimeout(() => {
-            navigate(`/course/${courseId}/quiz/${quiz.id}`);
-          }, 1500);
-          return;
-        }
+        // Always navigate to quiz after completing lesson
+        toast.success('Bài học hoàn thành! Chuyển sang phần quiz...');
+        setTimeout(() => {
+          navigate(`/course/${courseId}/quiz/${quiz.id}`);
+        }, 1500);
+        return;
       }
     } catch (err) {
       console.error('Error checking quiz:', err);
     }
 
-    // No quiz or already passed - just show success
+    // No quiz - just show success
     toast.success('Đã hoàn thành bài học!');
   };
 
@@ -1057,8 +1139,22 @@ const CourseContent = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* YouTube Player - ALWAYS PRESENT at root level with ref */}
+      <div 
+        ref={youtubePlayerDivRef}
+        id={playerDivId}
+        style={{ 
+          position: 'fixed',
+          top: '-9999px',
+          left: '-9999px',
+          width: '640px',
+          height: '360px',
+          zIndex: -1
+        }}
+      ></div>
+      
       {/* Sidebar - Course Outline */}
-      <div className="w-80 bg-white shadow-lg overflow-y-auto border-r border-gray-200">
+      <div className="w-80 bg-gray-900 shadow-lg overflow-y-auto border-r border-gray-700">
         <div className="p-4 border-b bg-gradient-to-r from-purple-600 to-pink-600">
           <button
             onClick={() => navigate("/my-courses")}
@@ -1089,7 +1185,7 @@ const CourseContent = () => {
         {/* Chapters & Lessons */}
         <div className="p-2">
           {chapters.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-gray-400">
               <p>Chưa có nội dung</p>
             </div>
           ) : (
@@ -1097,16 +1193,16 @@ const CourseContent = () => {
             <div key={chapter.chapterId} className="mb-2">
               <button
                 onClick={() => toggleChapter(chapter.chapterId)}
-                className="w-full text-left p-3 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-between font-semibold"
+                className="w-full text-left p-3 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center justify-between font-semibold text-white"
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-purple-600">📚</span>
+                  <span className="text-purple-400">📚</span>
                   {chapter.title}
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     ({chapter.completedLessons}/{chapter.totalLessons})
                   </span>
                 </span>
-                <span className="text-gray-500">
+                <span className="text-gray-400">
                   {expandedChapters[chapter.chapterId] ? "▼" : "▶"}
                 </span>
               </button>
@@ -1125,22 +1221,22 @@ const CourseContent = () => {
                         disabled={isLocked}
                         className={`w-full text-left p-2 rounded flex items-center gap-2 transition ${
                           isCurrent
-                            ? "bg-purple-100 text-purple-700 font-semibold"
+                            ? "bg-purple-600 text-white font-semibold"
                             : isLocked
-                            ? "opacity-50 cursor-not-allowed hover:bg-gray-50"
-                            : "hover:bg-gray-100 text-gray-700"
+                            ? "opacity-50 cursor-not-allowed hover:bg-gray-800 text-gray-500"
+                            : "hover:bg-gray-800 text-gray-300"
                         }`}
                       >
                         {isCompleted ? (
                           <span className="text-green-500 text-lg">✓</span>
                         ) : isLocked ? (
-                          <span className="text-gray-400 text-lg">🔒</span>
+                          <span className="text-gray-600 text-lg">🔒</span>
                         ) : (
-                          <span className="text-gray-400">{lessonIdx + 1}</span>
+                          <span className="text-gray-500">{lessonIdx + 1}</span>
                         )}
                         <span className="flex-1 text-sm">{lesson.title}</span>
                         {lesson.duration && (
-                          <span className="text-xs text-gray-500">{lesson.duration}min</span>
+                          <span className="text-xs text-gray-400">{lesson.duration}min</span>
                         )}
                       </button>
                     );
@@ -1197,26 +1293,14 @@ const CourseContent = () => {
             {/* Video Player */}
             {currentLesson.videoUrl && (
               <div className="bg-black rounded-lg mb-6 aspect-video shadow-xl relative overflow-hidden">
-                {(() => {
-                  console.log("🎥 Current Lesson Video:", {
-                    videoType: currentLesson.videoType,
-                    videoUrl: currentLesson.videoUrl,
-                    lessonId: currentLesson.id || currentLesson.lessonId
-                  });
-                  return null;
-                })()}
-                
-                {/* Auto-detect YouTube URL nếu videoType null */}
-                {(currentLesson.videoType === 'YOUTUBE' || 
-                  currentLesson.videoUrl.includes('youtube.com') || 
-                  currentLesson.videoUrl.includes('youtu.be')) ? (
-                  /* YouTube Player - Sẽ được initialize bởi YouTube iframe API */
+                {/* YouTube player container */}
+                {isYouTubeVideo ? (
                   <div 
-                    id={playerDivId}
+                    id="youtube-player-container"
                     className="w-full h-full"
                   ></div>
                 ) : (
-                  /* HTML5 Video */
+                  /* HTML5 video */
                   <video
                     ref={videoRef}
                     className="w-full h-full rounded-lg"
@@ -1273,8 +1357,15 @@ const CourseContent = () => {
                 {!isLessonCompleted(currentLesson.id || currentLesson.lessonId) ? (
                   <button
                     onClick={() => {
-                      setVideoProgress(100);
-                      saveHTML5VideoProgress(100);
+                      const lessonId = currentLesson.id || currentLesson.lessonId;
+                      if (isYouTubeVideo) {
+                        // For YouTube embed, mark as complete directly
+                        markVideoComplete();
+                      } else {
+                        // For HTML5 video, update progress to 100%
+                        setVideoProgress(100);
+                        saveHTML5VideoProgress(100);
+                      }
                     }}
                     className="px-6 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
                   >

@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import CourseAPI from "../api/courseAPI";
+import ProgressAPI from "../api/progressAPI";
 
 const QuizResult = () => {
   const location = useLocation();
@@ -19,6 +21,63 @@ const QuizResult = () => {
   // Calculate from results array if available
   const totalQuestions = result.results?.length || 0;
   const correctAnswers = result.results?.filter(r => r.correct).length || 0;
+
+  // Auto-navigate to next lesson after passing quiz
+  useEffect(() => {
+    const navigateToNextLesson = async () => {
+      if (!isPassed) return; // Chỉ chuyển khi pass quiz
+
+      try {
+        // Fetch course structure
+        const courseResponse = await CourseAPI.getCourseContent(courseId);
+        if (!courseResponse.data.success) return;
+
+        const chapters = courseResponse.data.data?.chapters || [];
+        
+        // Fetch progress để biết lesson hiện tại
+        const progressResponse = await ProgressAPI.getUserProgress(courseId);
+        if (!progressResponse.data.success) return;
+
+        const lessonProgress = progressResponse.data.data?.lessonProgress || [];
+        const completedLessonIds = lessonProgress
+          .filter(lp => lp.completed)
+          .map(lp => lp.lessonId);
+
+        // Find next uncompleted lesson
+        let nextLesson = null;
+        for (const chapter of chapters) {
+          for (const lesson of chapter.lessons || []) {
+            const lessonId = lesson.id || lesson.lessonId;
+            if (!completedLessonIds.includes(lessonId)) {
+              nextLesson = lesson;
+              break;
+            }
+          }
+          if (nextLesson) break;
+        }
+
+        if (nextLesson) {
+          console.log('🎯 Found next lesson:', nextLesson);
+          // Navigate after 3 seconds
+          setTimeout(() => {
+            navigate(`/course/${courseId}/learn`, { 
+              state: { autoLoadLesson: nextLesson.id || nextLesson.lessonId } 
+            });
+          }, 3000);
+        } else {
+          console.log('🎉 Course completed! No more lessons.');
+          // Navigate back to course after 3 seconds
+          setTimeout(() => {
+            navigate(`/course/${courseId}/learn`);
+          }, 3000);
+        }
+      } catch (err) {
+        console.error('Error finding next lesson:', err);
+      }
+    };
+
+    navigateToNextLesson();
+  }, [isPassed, courseId, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-gray-900 flex items-center justify-center p-6">
@@ -43,7 +102,7 @@ const QuizResult = () => {
 
         <p className="text-gray-400 text-center mb-8">
           {isPassed 
-            ? 'Bạn có thể tiếp tục học chapter tiếp theo' 
+            ? '🎯 Tự động chuyển sang bài học tiếp theo sau 3 giây...' 
             : 'Hãy xem lại bài giảng và thử lại'}
         </p>
 

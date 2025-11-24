@@ -283,7 +283,7 @@ export default function Home() {
 
           {/* Stats Grid */}
           <section className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl p-6 hover:border-purple-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
+            <div className="rounded-xl p-6 hover:border-purple-500/50 transition course-card animate-slideUp animate-stagger-1" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-blue-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-blue-500">school</span>
@@ -293,7 +293,7 @@ export default function Home() {
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Tổng khóa học</p>
             </div>
 
-            <div className="rounded-xl p-6 hover:border-green-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
+            <div className="rounded-xl p-6 hover:border-green-500/50 transition course-card animate-slideUp animate-stagger-2" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-green-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-green-500">category</span>
@@ -303,7 +303,7 @@ export default function Home() {
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Danh mục</p>
             </div>
 
-            <div className="rounded-xl p-6 hover:border-orange-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
+            <div className="rounded-xl p-6 hover:border-orange-500/50 transition course-card animate-slideUp animate-stagger-3" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-orange-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-orange-500">trending_up</span>
@@ -315,7 +315,7 @@ export default function Home() {
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Cơ bản</p>
             </div>
 
-            <div className="rounded-xl p-6 hover:border-purple-500/50 transition" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
+            <div className="rounded-xl p-6 hover:border-purple-500/50 transition course-card animate-slideUp animate-stagger-4" style={{ border: `1px solid var(--stat-card-border)`, backgroundColor: 'var(--stat-card-bg)' }}>
               <div className="mb-3 flex items-center justify-between">
                 <div className="rounded-lg bg-purple-500/10 p-3">
                   <span className="material-symbols-outlined text-2xl text-purple-500">workspace_premium</span>
@@ -371,11 +371,15 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredCourses.map((course) => (
+                {filteredCourses.map((course, index) => (
                   <div
                     key={course.id}
-                    className="group overflow-hidden rounded-xl transition hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10"
-                    style={{ border: `1px solid var(--card-border)`, backgroundColor: 'var(--card-bg)' }}
+                    className="group overflow-hidden rounded-xl transition hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 course-card animate-slideUp"
+                    style={{ 
+                      animationDelay: `${index * 0.05}s`,
+                      border: `1px solid var(--card-border)`, 
+                      backgroundColor: 'var(--card-bg)' 
+                    }}
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-video overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>

@@ -4,11 +4,15 @@ import { jwtDecode } from "jwt-decode";
 import { signInWithGoogle } from "../config/firebaseConfig.jsx";
 import AuthAPI from "../api/authApi.jsx";
 import toast from "../utils/toast.js";
- // Firebase config và signInWithGoogle
+import SuccessModal from "./SuccessModal.jsx";
 
 export default function AuthModal() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("register");
+  
+  // Success Modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Register state
   const [fullName, setFullName] = useState("");
@@ -96,14 +100,33 @@ export default function AuthModal() {
 
     if (res.data.success) {
       console.log("OTP OK, chuyển về login");
-      setActiveTab("login");
+      
+      // Show success modal
+      setSuccessMessage("Đăng ký tài khoản thành công! Hãy đăng nhập để tiếp tục.");
+      setShowSuccessModal(true);
+      
+      // Chuyển sang tab login sau 2 giây
+      setTimeout(() => {
+        setActiveTab("login");
+        setShowSuccessModal(false);
+        // Reset form đăng ký
+        setStep("register");
+        setFullName("");
+        setPhoneNumber("");
+        setRegisterEmail("");
+        setRegisterPassword("");
+        setOtpCode("");
+        setOtpToken("");
+      }, 2000);
     } else {
       console.warn("Server báo lỗi:", res.data.message);
+      toast.error(res.data.message || "OTP không chính xác");
     }
 
   } catch (e) {
     console.error("❌ VERIFY ERROR:", e);
     console.error("❌ RESPONSE ERROR:", e.response?.data);
+    toast.error(e.response?.data?.message || "Xác thực OTP thất bại");
   } finally {
     setOtpLoading(false);
   }
@@ -163,14 +186,20 @@ export default function AuthModal() {
         
         console.log("✅ Auth data saved to localStorage");
         
-        // Tự động redirect dựa vào role
-        if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
-          console.log("🔴 Redirecting to ADMIN dashboard");
-          navigate("/admin/dashboard", { replace: true });
-        } else {
-          console.log("🟢 Redirecting to USER home");
-          navigate("/home", { replace: true });
-        }
+        // Show success modal
+        setSuccessMessage("Đăng nhập thành công! Đang chuyển trang...");
+        setShowSuccessModal(true);
+        
+        // Tự động redirect dựa vào role sau 2 giây
+        setTimeout(() => {
+          if (userRole === "ADMIN" || userRole === "ROLE_ADMIN") {
+            console.log("🔴 Redirecting to ADMIN dashboard");
+            navigate("/admin/dashboard", { replace: true });
+          } else {
+            console.log("🟢 Redirecting to USER home");
+            navigate("/home", { replace: true });
+          }
+        }, 2000);
       } else {
         toast.error(res.data.message || "Login failed");
       }
@@ -513,6 +542,14 @@ export default function AuthModal() {
           </div>
         )}
       </div>
+      
+      {/* Success Modal */}
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message={successMessage}
+        autoCloseDelay={2000}
+      />
     </div>
   );
 }
