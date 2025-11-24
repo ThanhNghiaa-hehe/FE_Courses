@@ -10,6 +10,7 @@ export default function AdminSidebar({ onLogout }) {
     { icon: "dashboard", label: "Dashboard", path: "/admin/dashboard" },
     { icon: "school", label: "Courses", path: "/admin/courses" },
     { icon: "category", label: "Categories", path: "/admin/categories" },
+    { icon: "quiz", label: "Quizzes", path: "/admin/quizzes" },
     { icon: "people", label: "Users", path: "/admin/users" },
   ];
 

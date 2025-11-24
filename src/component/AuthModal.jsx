@@ -130,7 +130,13 @@ export default function AuthModal() {
         const decoded = jwtDecode(accessToken);
         console.log("🔓 Decoded Token:", decoded);
         
-        const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+        let userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+        
+        // Remove ROLE_ prefix if exists (Spring Security adds it)
+        if (userRole && userRole.startsWith("ROLE_")) {
+          userRole = userRole.substring(5); // "ROLE_ADMIN" -> "ADMIN"
+        }
+        
         console.log("👤 User Role:", userRole);
 
         // Backup enrolled courses và favorites trước khi clear
@@ -191,8 +197,13 @@ export default function AuthModal() {
         
         // Decode JWT token để lấy role
         const decoded = jwtDecode(token);
-        const userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
+        let userRole = decoded.role || decoded.authorities?.[0] || decoded.scope;
         const userEmail = decoded.email || decoded.sub;
+        
+        // Remove ROLE_ prefix if exists (Spring Security adds it)
+        if (userRole && userRole.startsWith("ROLE_")) {
+          userRole = userRole.substring(5); // "ROLE_ADMIN" -> "ADMIN"
+        }
         
         // Backup enrolled courses và favorites trước khi clear
         const enrolledCourses = localStorage.getItem("enrolledCourses");

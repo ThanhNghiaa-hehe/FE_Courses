@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import LessonAPI from "../api/lessonAPI";
 import CourseAPI from "../api/courseAPI";
 import ProgressAPI from "../api/progressAPI";
+import QuizAPI from "../api/quizAPI";
 import { jwtDecode } from "jwt-decode";
 import toast from "../utils/toast.js";
 
@@ -20,6 +21,8 @@ const CourseContent = () => {
   const [completedLessons, setCompletedLessons] = useState(new Set());
   const [userId, setUserId] = useState(null);
   const [youtubePlayer, setYoutubePlayer] = useState(null);
+  const [chapterQuizzes, setChapterQuizzes] = useState({});
+  const [quizPassStatus, setQuizPassStatus] = useState({});
   const videoRef = useRef(null);
   const progressIntervalRef = useRef(null);
   const saveIntervalRef = useRef(null);
@@ -75,6 +78,128 @@ const CourseContent = () => {
       }
 
       // Lấy chapters của khóa học (Public API)
+      console.log("🔍 Starting to fetch chapters...");
+      console.log("🔍 Course ID:", courseId);
+      
+      try {
+        console.log("📊 Loading chapters with progress and unlock status...");
+        const progressResponse = await ProgressAPI.getChaptersWithProgress(courseId);
+        
+        console.log("📊 Progress response received:", progressResponse);
+        
+        if (progressResponse.data.success) {
+          const chaptersWithProgress = progressResponse.data.data;
+          console.log("✅ Chapters with progress loaded:", chaptersWithProgress);
+          
+          // Load lessons for each chapter
+          const chaptersWithLessons = await Promise.all(
+            chaptersWithProgress.map(async (chapter) => {
+              try {
+                console.log(`📖 Loading lessons for chapter ${chapter.chapterId}`);
+                const lessonsRes = await LessonAPI.getLessonsByChapter(chapter.chapterId);
+                
+                let lessons = [];
+                if (Array.isArray(lessonsRes.data)) {
+                  lessons = lessonsRes.data;
+                } else if (lessonsRes.data.success && Array.isArray(lessonsRes.data.data)) {
+                  lessons = lessonsRes.data.data;
+                } else if (Array.isArray(lessonsRes.data.data)) {
+                  lessons = lessonsRes.data.data;
+                }
+                
+                console.log(`📖 Found ${lessons.length} lessons in chapter ${chapter.chapterId}`);
+                
+                return {
+                  chapterId: chapter.chapterId,
+                  title: chapter.title,
+                  description: chapter.description,
+                  order: chapter.order,
+                  totalLessons: chapter.totalLessons,
+                  completedLessons: chapter.completedLessons,
+                  progressPercent: chapter.progressPercent,
+                  isUnlocked: true, // Always unlock all chapters for enrolled users
+                  lessons: lessons.map(lesson => ({
+                    lessonId: lesson.id,
+                    id: lesson.id,
+                    title: lesson.title,
+                    description: lesson.description,
+                    duration: lesson.duration,
+                    isCompleted: false, // Will be updated by fetchProgress
+                    order: lesson.order,
+                    type: lesson.contentType || lesson.videoType || 'VIDEO',
+                    videoUrl: lesson.videoUrl,
+                    videoType: lesson.videoType,
+                    content: lesson.content,
+                    contentHtml: lesson.contentHtml,
+                    isFree: lesson.isFree
+                  }))
+                };
+              } catch (err) {
+                console.error(`❌ Error loading lessons for chapter ${chapter.chapterId}:`, err);
+                return {
+                  ...chapter,
+                  lessons: []
+                };
+              }
+            })
+          );
+          
+          console.log("✅ Chapters with lessons loaded:", chaptersWithLessons);
+          setChapters(chaptersWithLessons);
+          
+          // Fetch progress to mark completed lessons and get current lesson
+          const progressResult = await fetchProgress();
+          
+          // Fetch quizzes
+          setTimeout(() => {
+            fetchChapterQuizzes();
+          }, 500);
+          
+          // Load the lesson user was on, or first incomplete lesson, or first lesson
+          let lessonToLoad = null;
+          
+          // Try to load current lesson from progress
+          if (progressResult?.currentLessonId) {
+            lessonToLoad = progressResult.currentLessonId;
+            console.log("📍 Loading current lesson from progress:", lessonToLoad);
+          }
+          
+          // If no current lesson, find first incomplete lesson
+          if (!lessonToLoad && progressResult?.completedIds) {
+            for (const chapter of chaptersWithLessons) {
+              const incompleteLesson = chapter.lessons?.find(
+                lesson => !progressResult.completedIds.includes(lesson.id)
+              );
+              if (incompleteLesson) {
+                lessonToLoad = incompleteLesson.id;
+                console.log("📍 Loading first incomplete lesson:", lessonToLoad);
+                setExpandedChapters({ [chapter.chapterId]: true });
+                break;
+              }
+            }
+          }
+          
+          // Fallback to first lesson
+          if (!lessonToLoad) {
+            const firstUnlockedChapter = chaptersWithLessons.find(ch => ch.isUnlocked);
+            if (firstUnlockedChapter?.lessons?.[0]) {
+              lessonToLoad = firstUnlockedChapter.lessons[0].lessonId;
+              setExpandedChapters({ [firstUnlockedChapter.chapterId]: true });
+              console.log("📍 Loading first lesson (fallback):", lessonToLoad);
+            }
+          }
+          
+          if (lessonToLoad) {
+            loadLesson(lessonToLoad);
+          }
+          
+          return; // Success - exit early
+        }
+      } catch (progressErr) {
+        console.error("❌ Error loading chapters with progress, falling back:", progressErr);
+      }
+      
+      // Fallback: Load chapters without progress info
       try {
         const chaptersRes = await LessonAPI.getChaptersByCourse(courseId);
         console.log("📚 RAW Chapters response:", chaptersRes);
@@ -186,6 +311,11 @@ const CourseContent = () => {
         
         setChapters(chaptersWithLessons);
         
+        // 🆕 Fetch quizzes after chapters loaded
+        setTimeout(() => {
+          fetchChapterQuizzes();
+        }, 500);
+        
         // Tự động mở chapter đầu tiên và chọn lesson đầu tiên
         if (chaptersWithLessons.length > 0) {
           setExpandedChapters({ [chaptersWithLessons[0].chapterId]: true });
@@ -206,32 +336,259 @@ const CourseContent = () => {
     }
   };
 
+  const refreshChaptersUnlockStatus = async () => {
+    try {
+      console.log("🔄 Refreshing chapters unlock status...");
+      
+      // Load both chapters and progress in parallel
+      const [progressResponse, courseProgressResponse] = await Promise.all([
+        ProgressAPI.getChaptersWithProgress(courseId),
+        ProgressAPI.getCourseProgress(courseId)
+      ]);
+      
+      console.log("📊 Raw course progress response:", courseProgressResponse);
+      
+      if (progressResponse.data.success) {
+        const chaptersWithProgress = progressResponse.data.data;
+        console.log("✅ Chapters unlock status refreshed:", chaptersWithProgress);
+        
+        // Get completed lesson IDs
+        let completedIds = [];
+        if (courseProgressResponse.data.success) {
+          const progressData = courseProgressResponse.data.data;
+          console.log("📊 Full progress data:", progressData);
+          
+          // Backend returns lessonsProgress (not lessonProgress)
+          completedIds = progressData.lessonsProgress
+            ?.filter(lp => lp.completed)
+            .map(lp => lp.lessonId) || [];
+          
+          console.log("✅ Completed lessons:", completedIds);
+          setCompletedLessons(new Set(completedIds));
+        }
+        
+          // Load lessons for each chapter
+          const chaptersWithLessons = await Promise.all(
+            chaptersWithProgress.map(async (chapter) => {
+              try {
+                const lessonsRes = await LessonAPI.getLessonsByChapter(chapter.chapterId);
+                
+                let lessons = [];
+                if (Array.isArray(lessonsRes.data)) {
+                  lessons = lessonsRes.data;
+                } else if (lessonsRes.data.success && Array.isArray(lessonsRes.data.data)) {
+                  lessons = lessonsRes.data.data;
+                } else if (Array.isArray(lessonsRes.data.data)) {
+                  lessons = lessonsRes.data.data;
+                }
+                
+                return {
+                  chapterId: chapter.chapterId,
+                  title: chapter.title,
+                  description: chapter.description,
+                  order: chapter.order,
+                  totalLessons: chapter.totalLessons,
+                  completedLessons: chapter.completedLessons,
+                  progressPercent: chapter.progressPercent,
+                  isUnlocked: true, // Always unlock all chapters for enrolled users
+                  lessons: lessons.map(lesson => ({
+                    lessonId: lesson.id,
+                    id: lesson.id,
+                    title: lesson.title,
+                    description: lesson.description,
+                    duration: lesson.duration,
+                    isCompleted: completedIds.includes(lesson.id),
+                    order: lesson.order,
+                    type: lesson.contentType || lesson.videoType || 'VIDEO',
+                    videoUrl: lesson.videoUrl,
+                    videoType: lesson.videoType,
+                    content: lesson.content,
+                    contentHtml: lesson.contentHtml,
+                    isFree: lesson.isFree
+                  }))
+                };
+              } catch (err) {
+                console.error(`❌ Error loading lessons for chapter ${chapter.chapterId}:`, err);
+                return {
+                  ...chapter,
+                  isUnlocked: true, // Always unlock even on error
+                  lessons: []
+                };
+              }
+            })
+          );        console.log("✅ Final chapters with lessons:", chaptersWithLessons);
+        setChapters(chaptersWithLessons);
+      }
+    } catch (err) {
+      console.error("❌ Error refreshing unlock status:", err);
+    }
+  };
+
   const fetchProgress = async () => {
     try {
-      if (!userId) return;
+      console.log("🔍 fetchProgress() called");
       
-      // Lấy progress từ localStorage theo userId
-      const progressKey = `progress_${userId}_${courseId}`;
-      const savedProgress = JSON.parse(localStorage.getItem(progressKey) || '{}');
-      console.log("📊 Saved progress from localStorage:", savedProgress);
+      // Get userId directly from token instead of state
+      const token = localStorage.getItem("accessToken");
+      let currentUserId = userId;
       
-      if (savedProgress.completedLessons) {
-        setCompletedLessons(new Set(savedProgress.completedLessons));
+      if (!currentUserId && token) {
+        try {
+          const decoded = jwtDecode(token);
+          currentUserId = decoded.sub;
+          console.log("🔑 Extracted userId from token:", currentUserId);
+        } catch (err) {
+          console.error("❌ Error decoding token:", err);
+        }
       }
       
-      // Cập nhật chapters với completion status
-      setChapters(prevChapters => 
-        prevChapters.map(chapter => ({
-          ...chapter,
-          lessons: chapter.lessons.map(lesson => ({
-            ...lesson,
-            isCompleted: savedProgress.completedLessons?.includes(lesson.id || lesson.lessonId) || false
-          }))
-        }))
-      );
+      console.log("🔍 userId:", currentUserId);
+      console.log("🔍 courseId:", courseId);
+      
+      if (!currentUserId) {
+        console.log("❌ No userId, skipping progress fetch");
+        return null;
+      }
+      
+      console.log("📊 Fetching progress from backend...");
+      
+      // Load progress from backend
+      const response = await ProgressAPI.getCourseProgress(courseId);
+      
+      console.log("📊 Progress API response:", response);
+      
+      if (response.data.success) {
+        const progressData = response.data.data;
+        console.log("✅ Progress loaded from backend:", progressData);
+        console.log("📝 lessonsProgress array:", progressData.lessonsProgress);
+        
+        // Extract completed lesson IDs - backend returns lessonsProgress (not lessonProgress)
+        const completedIds = progressData.lessonsProgress
+          ?.filter(lp => lp.completed)
+          .map(lp => lp.lessonId) || [];
+        
+        console.log("✅ Completed lesson IDs:", completedIds);
+        console.log("✅ Setting completedLessons Set with:", completedIds);
+        
+        setCompletedLessons(new Set(completedIds));
+        
+        // Update localStorage cache
+        const progressKey = `progress_${currentUserId}_${courseId}`;
+        localStorage.setItem(progressKey, JSON.stringify({
+          completedLessons: completedIds,
+          currentLessonId: progressData.currentLessonId,
+          lastSync: new Date().toISOString()
+        }));
+        
+        console.log("🔄 Updating chapters with completion status...");
+        
+        // Update chapters with completion status
+        setChapters(prevChapters => {
+          const updatedChapters = prevChapters.map(chapter => ({
+            ...chapter,
+            lessons: chapter.lessons.map(lesson => {
+              const isCompleted = completedIds.includes(lesson.id || lesson.lessonId);
+              console.log(`  Lesson ${lesson.title}: isCompleted = ${isCompleted}`);
+              return {
+                ...lesson,
+                isCompleted
+              };
+            })
+          }));
+          console.log("✅ Updated chapters:", updatedChapters);
+          return updatedChapters;
+        });
+        
+        // Return progress data for caller
+        return {
+          completedIds,
+          currentLessonId: progressData.currentLessonId
+        };
+      }
+      console.log("⚠️ Progress API response not successful");
+      return null;
     } catch (err) {
-      console.error("Error fetching progress:", err);
+      console.error("❌ Error fetching progress from backend:", err);
+      
+      // Get userId from token for fallback
+      const token = localStorage.getItem("accessToken");
+      let currentUserId = userId;
+      if (!currentUserId && token) {
+        try {
+          const decoded = jwtDecode(token);
+          currentUserId = decoded.sub;
+        } catch (err) {
+          console.error("Error decoding token:", err);
+        }
+      }
+      
+      // Fallback to localStorage if backend fails
+      const progressKey = `progress_${currentUserId}_${courseId}`;
+      const savedProgress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+      
+      if (savedProgress.completedLessons) {
+        console.log("📦 Using cached progress from localStorage");
+        setCompletedLessons(new Set(savedProgress.completedLessons));
+        return {
+          completedIds: savedProgress.completedLessons,
+          currentLessonId: savedProgress.currentLessonId
+        };
+      }
+      return null;
     }
+  };
+
+  // 🆕 Fetch quizzes for all lessons in a chapter
+  const fetchChapterQuizzes = async () => {
+    try {
+      const quizzesMap = {};
+      const passStatusMap = {};
+
+      for (const chapter of chapters) {
+        for (const lesson of chapter.lessons) {
+          try {
+            // Try to get quiz for this lesson (using user API)
+            const quizRes = await QuizAPI.getQuiz(lesson.id);
+            if (quizRes.data.success) {
+              quizzesMap[lesson.id] = quizRes.data.data;
+              
+              // Check if user has passed this quiz
+              try {
+                const passedRes = await QuizAPI.hasPassedQuiz(quizRes.data.data.id);
+                if (passedRes.data.success) {
+                  passStatusMap[quizRes.data.data.id] = passedRes.data.data;
+                }
+              } catch (err) {
+                passStatusMap[quizRes.data.data.id] = false;
+              }
+            }
+          } catch (err) {
+            // No quiz for this lesson
+          }
+        }
+      }
+
+      setChapterQuizzes(quizzesMap);
+      setQuizPassStatus(passStatusMap);
+      console.log("🎯 Chapter quizzes loaded:", quizzesMap);
+      console.log("✅ Quiz pass status:", passStatusMap);
+    } catch (err) {
+      console.error("Error fetching quizzes:", err);
+    }
+  };
+
+  // 🆕 Check if all lessons in chapter are completed
+  const isChapterCompleted = (chapter) => {
+    return chapter.lessons.every(lesson => 
+      completedLessons.has(lesson.id || lesson.lessonId)
+    );
+  };
+
+  // 🆕 Get quiz for last lesson in chapter
+  const getChapterQuiz = (chapter) => {
+    if (chapter.lessons.length === 0) return null;
+    const lastLesson = chapter.lessons[chapter.lessons.length - 1];
+    return chapterQuizzes[lastLesson.id];
   };
 
   const loadLesson = async (lessonId) => {
@@ -571,29 +928,56 @@ const CourseContent = () => {
   /**
    * Handle khi lesson completed
    */
-  const handleLessonCompleted = (lessonId) => {
+  const handleLessonCompleted = async (lessonId) => {
     console.log('🎉 Handling lesson completion:', lessonId);
+    
+    // Mark lesson as completed on backend
+    try {
+      await ProgressAPI.completeLesson(lessonId);
+      console.log('✅ Lesson marked as completed on backend');
+      
+      // Wait a bit for backend to process
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (err) {
+      console.error('❌ Error marking lesson complete:', err);
+    }
     
     // Update local state
     const newCompleted = new Set(completedLessons);
     newCompleted.add(lessonId);
     setCompletedLessons(newCompleted);
 
-    // Update localStorage
-    const storageKey = `completed_${userId}_${courseId}`;
-    const completed = Array.from(newCompleted);
-    localStorage.setItem(storageKey, JSON.stringify(completed));
-    
-    console.log('✅ Updated completed lessons:', completed);
+    // Refresh chapters unlock status from backend
+    await refreshChaptersUnlockStatus();
 
-    // Refresh progress
-    fetchProgress();
+    // Check if lesson has quiz
+    try {
+      const quizResponse = await QuizAPI.getQuizByLesson(lessonId);
+      if (quizResponse.data.success && quizResponse.data.data) {
+        const quiz = quizResponse.data.data;
+        console.log('📝 Lesson has quiz:', quiz);
+        
+        // Check if user already passed this quiz
+        const passedResponse = await QuizAPI.hasPassedQuiz(quiz.id);
+        if (passedResponse.data.data === true) {
+          console.log('✅ Quiz already passed, moving to next lesson');
+          toast.success('Bài học hoàn thành! Bạn đã pass quiz này rồi.');
+          return;
+        } else {
+          // Navigate to quiz page
+          toast.success('Bài học hoàn thành! Chuyển sang phần quiz...');
+          setTimeout(() => {
+            navigate(`/course/${courseId}/quiz/${quiz.id}`);
+          }, 1500);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error checking quiz:', err);
+    }
 
-    // Auto navigate to next lesson (optional)
-    // const nextLesson = findNextLesson();
-    // if (nextLesson) {
-    //   setTimeout(() => loadLesson(nextLesson.id), 2000);
-    // }
+    // No quiz or already passed - just show success
+    toast.success('Đã hoàn thành bài học!');
   };
 
   /**
@@ -611,12 +995,9 @@ const CourseContent = () => {
       if (response.data.success) {
         console.log(`✅ HTML5 progress saved: ${percent}%`);
         
-        // Check auto-complete
-        const lessonProgress = response.data.data?.lessonProgress?.find(
-          lp => lp.lessonId === lessonId
-        );
-        
-        if (lessonProgress && lessonProgress.completed) {
+        // Auto-complete when reach 100%
+        if (percent >= 100 && !completedLessons.has(lessonId)) {
+          console.log('🎉 Video completed, marking lesson as complete...');
           handleLessonCompleted(lessonId);
         }
       }
@@ -764,6 +1145,43 @@ const CourseContent = () => {
                       </button>
                     );
                   })}
+
+                  {/* 🆕 Quiz Button - Show at end of chapter if all lessons completed */}
+                  {(() => {
+                    const chapterComplete = isChapterCompleted(chapter);
+                    const quiz = getChapterQuiz(chapter);
+                    
+                    if (quiz && chapterComplete) {
+                      const isPassed = quizPassStatus[quiz.id];
+                      
+                      return (
+                        <button
+                          onClick={() => navigate(`/course/${courseId}/quiz/${quiz.id}`)}
+                          className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition mt-2 border-2 ${
+                            isPassed
+                              ? "bg-green-50 border-green-500 hover:bg-green-100"
+                              : "bg-yellow-50 border-yellow-500 hover:bg-yellow-100 animate-pulse"
+                          }`}
+                        >
+                          <span className="text-2xl">
+                            {isPassed ? "✅" : "📝"}
+                          </span>
+                          <div className="flex-1">
+                            <div className={`font-semibold ${isPassed ? "text-green-700" : "text-yellow-700"}`}>
+                              {quiz.title}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {isPassed ? "Đã hoàn thành" : "Làm quiz để tiếp tục"}
+                            </div>
+                          </div>
+                          <span className="text-gray-500">
+                            {quiz.questions?.length || 0} câu • {quiz.timeLimit}p
+                          </span>
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
             </div>
@@ -856,7 +1274,7 @@ const CourseContent = () => {
                   <button
                     onClick={() => {
                       setVideoProgress(100);
-                      handleVideoProgress(100);
+                      saveHTML5VideoProgress(100);
                     }}
                     className="px-6 py-2 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
                   >

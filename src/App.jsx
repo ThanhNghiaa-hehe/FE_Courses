@@ -9,11 +9,15 @@ import CourseContent from "./pages/CourseContent.jsx";
 import UserProfile from "./pages/UserProfile.jsx";
 import Favorites from "./pages/Favorites.jsx";
 import PaymentCallback from "./pages/PaymentCallback.jsx";
+import QuizPage from "./pages/QuizPage.jsx";
+import QuizResult from "./pages/QuizResult.jsx";
+import QuizAttempts from "./pages/QuizAttempts.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminCourses from "./pages/Admin.jsx";
 import AdminCourseContent from "./pages/AdminCourseContent.jsx";
 import AdminCategories from "./pages/AdminCategories.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
+import AdminQuizzes from "./pages/AdminQuizzes.jsx";
 import AuthModal from "./component/AuthModal.jsx";
 
 function App() {
@@ -57,8 +61,29 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* Payment Callback Route - Public route for VNPay callback */}
-        <Route path="/payment/callback" element={<PaymentCallback />} />
+        {/* Quiz Routes */}
+        <Route path="/course/:courseId/quiz/:quizId" element={
+          <ProtectedRoute>
+            <QuizPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/course/:courseId/quiz/:quizId/result" element={
+          <ProtectedRoute>
+            <QuizResult />
+          </ProtectedRoute>
+        } />
+        <Route path="/course/:courseId/quiz/:quizId/attempts" element={
+          <ProtectedRoute>
+            <QuizAttempts />
+          </ProtectedRoute>
+        } />
+        
+        {/* Payment Callback Route */}
+        <Route path="/payment/callback" element={
+          <ProtectedRoute>
+            <PaymentCallback />
+          </ProtectedRoute>
+        } />
         
         {/* Admin Routes - Protected & Require Admin Role */}
         <Route path="/admin/dashboard" element={
@@ -84,6 +109,11 @@ function App() {
         <Route path="/admin/users" element={
           <ProtectedRoute requireAdmin={true}>
             <AdminUsers />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/quizzes" element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminQuizzes />
           </ProtectedRoute>
         } />
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
